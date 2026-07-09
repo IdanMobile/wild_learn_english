@@ -1,0 +1,31 @@
+name: learn_english_flutter
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flame: ^1.37.0
+  flame_audio: ^2.12.1
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/environment/sky.webp
+    - assets/environment/mountains_far.png
+    - assets/environment/haze.png
+    - assets/environment/foreground_mist.png
+    - assets/environment/castle.png
+    - assets/environment/castle_detail_overlay.png
+    - assets/props/magic_chest.png
+    - assets/props/crystal_orb.png
+    - assets/props/floating_crystal.png
