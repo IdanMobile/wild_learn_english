@@ -37,6 +37,189 @@ Re-verify with `flutter --version`, `flutter devices`, `ls lib/`, `git status` (
 `.git` dir exists) at the start — do not assume the above is still true if evidence
 contradicts it.
 
+**This "Starting Repo State" section describes the state before the first execution
+attempt. It is superseded by the Continuation Baseline below for anything that
+section lists as already delivered.**
+
+## CONTINUATION BASELINE — PRESERVE VERIFIED WORK
+
+This execution continues from failed orchestration run
+`run-20260709090051894-25468` (immutable evidence — do not modify anything under
+`~/.claude/orchestration/runs/run-20260709090051894-25468/`). Its TASK-0001 through
+TASK-0015 completed and were independently verified. Their current repository
+outputs are accepted baseline, not a starting point to redo:
+
+- `pubspec.yaml`, `pubspec.lock` — flame/flame_audio deps + asset declarations added
+- `lib/main.dart` — boilerplate replaced
+- `lib/app/saga_app.dart`
+- `lib/saga_map/saga_map_screen.dart`
+- `AD.md` — §29 bootstrap rows updated to `VERIFIED`
+- `lib/saga_map/domain/saga_node_state.dart`
+- `lib/saga_map/domain/saga_node.dart`
+- `lib/saga_map/domain/saga_map_state.dart`
+- `lib/saga_map/world/saga_path.dart`
+- `lib/saga_map/world/visible_node_window.dart`
+- `lib/saga_map/projection/perspective_projector.dart`
+- `lib/saga_map/rendering/saga_scene.dart`
+- `test/saga_map/world/saga_path_test.dart`
+- `test/saga_map/world/visible_node_window_test.dart`
+- `test/saga_map/projection/perspective_projector_test.dart`
+
+Rules for planning/continuing from here:
+- Planning must inspect and preserve these files as-is.
+- Do not schedule replacement tasks for already-satisfied work unless a concrete
+  incompatibility is proven against the actual current file content.
+- Any required modification to an already-verified file listed above must be
+  surfaced as an explicit exception requiring review before it is scheduled — never
+  silently rewritten.
+- The recovery scope begins at the structural gap around scene assembly / painter /
+  game wiring (see WAVE 2 below, `saga_scene_builder.dart`) and continues through the
+  remaining unfinished work (interaction, visual depth, debug, extensibility,
+  performance, polish, submission closure).
+
+## SECOND-GENERATION EXECUTION STATE — run-20260709112606184-87488
+
+This prompt was itself planned and partially executed once already, as
+`run-20260709112606184-87488` (immutable evidence — do not modify anything
+under `~/.claude/orchestration/runs/run-20260709112606184-87488/`). Any new
+plan generated from this prompt must treat that run's outcome as follows,
+layered on top of the Continuation Baseline above (do not conflate the two —
+this is a second, later layer of recovery state):
+
+- **Preserve as accepted baseline** (that run's TASK-0001–TASK-0007):
+  `AD.md` §29 ledger reconciliation; `lib/saga_map/rendering/saga_scene_builder.dart`
+  + its test (W2-4); `lib/saga_map/rendering/saga_map_painter.dart` (W2-5);
+  `lib/saga_map/saga_map_game.dart` + `lib/saga_map/saga_map_screen.dart`
+  GameWidget wiring (W2-6); Gate D1-G2 verification; `lib/saga_map/navigation/saga_scroll_physics.dart`
+  (W3-1) + its test (W3-3). Verified — do not silently redo.
+- **Superseded/reopened, NOT accepted baseline** (that run's TASK-0008 — the
+  W3-2 drag-wiring work item touching `lib/saga_map/saga_map_game.dart` +
+  `lib/saga_map/saga_map_screen.dart`): it was marked verified, but its
+  acceptance criteria were incomplete — they required only that `progress`
+  be mutated by drag, never that `currentLevel` be derived from it. A worker
+  satisfying those old criteria left Gate D1-G3 permanently failing. Do not
+  treat any current `onDragUpdate` implementation as accepted baseline; W3-2
+  below has been rewritten with expanded criteria and must be re-executed.
+- **Failed verification, to be rerun once W3-2 is repaired** (that run's
+  TASK-0009): Gate D1-G3, CRITICAL. Its own criteria were already correct
+  and need no change beyond the strengthening below — see WAVE 3.
+- **Blocked/unexecuted, unchanged** (that run's TASK-0010 onward): Waves 4–9.
+
+Do not claim TASK-0001 through TASK-0008 of that run are all accepted
+baseline — only TASK-0001–TASK-0007 are. TASK-0008 is reopened.
+
+## RECOVERY GOVERNANCE
+
+The new plan must:
+- Inspect current repo state before scheduling any task — never assume an empty
+  repository.
+- Detect already-satisfied requirements from the Continuation Baseline above and
+  skip scheduling redundant work for them.
+- Preserve verified outputs — never silently redo TASK-0001–TASK-0015-equivalent
+  work.
+- Plan only missing/recovery/downstream work where possible.
+- Flag any need to alter an already-verified file as an explicit exception requiring
+  review before execution, not a silent overwrite.
+
+## PRE-DECLARED RECOVERY-GOVERNANCE EXCEPTIONS
+
+Every later-wave modification to a Continuation Baseline file must cite one of
+these pre-approved exceptions by number in its own acceptance criteria — this
+satisfies the "surfaced as an explicit exception requiring review" rule above
+without re-litigating the justification in every task. A baseline-file touch that
+does **not** match one of these four is a new, unreviewed exception and must not
+be scheduled silently.
+
+### Exception 1 — `lib/saga_map/saga_map_screen.dart`
+- **Later responsibility requiring modification:** W2-6 (wiring `GameWidget` in
+  place of the blank `Scaffold` stub), W3-2 (wiring drag input around
+  `GameWidget`), W5-1 (wiring the debug-overlay toggle), W8-2 (wiring `SagaHud`).
+- **Why additive modification is necessary:** the file was deliberately left a
+  blank stub by the bootstrap wave specifically so each later wave could wire in
+  its own widget — this was always the intended extension point, not frozen
+  content.
+- **Existing verified behavior that must remain unchanged:** must still build a
+  valid `MaterialApp`/`Scaffold` tree; no prior wave's wiring may be removed by a
+  later wave, only composed with.
+- **Prohibited regressions:** no wave replaces another wave's wiring instead of
+  composing with it; no reintroducing the blank stub; no duplicate
+  `Scaffold`/`GameWidget` instantiation.
+- **Owner/work item:** W2-6, W3-2, W5-1, W8-2 — each additive, in that order.
+
+### Exception 2 — `lib/saga_map/world/saga_path.dart`
+- **Later responsibility requiring modification:** W3-2 (adding
+  `levelForProgress(double progress)` — the canonical `progress` →
+  `currentLevel` derivation required by Gate D1-G3), W4-1 (tuning meander
+  constants for depth feel), W6-1 (adding `SagaPathPreset` enum).
+- **Why additive modification is necessary:**
+  - W3-2: `saga_path.dart` already owns the depth-spacing constant and the
+    `depth(index)` forward mapping; deriving the inverse (`progress` → level)
+    in the same module avoids duplicating that spacing invariant anywhere
+    else (e.g. in `saga_map_game.dart` or `saga_map_state.dart`).
+  - W4-1/W6-1: unchanged from before — the baseline `nodeAt`/`x`/`depth`
+    functions are deliberately parameterized by tuning constants meant to be
+    adjusted once real rendering exists to judge them against;
+    `SagaPathPreset` is the extensibility proof Gate D2-G2 explicitly
+    requires.
+- **Existing verified behavior that must remain unchanged:** `nodeAt`'s signature
+  (`SagaNode nodeAt(int index, {required int currentLevel})`), its determinism
+  (same index + currentLevel → identical node, always), the existing
+  depth-spacing constant's value and meaning, and the "no Flutter/
+  Flame/Canvas import, no cached mutable history" constraints.
+- **Prohibited regressions:** `test/saga_map/world/saga_path_test.dart` must pass
+  unmodified after every addition/tuning/extension; no strategy-interface
+  abstraction for the two-preset case (§15 rule 7 — a plain `switch` only);
+  `levelForProgress` must reuse the existing depth-spacing constant — it must
+  not introduce a second, duplicate spacing value.
+- **Required tests proving no regression:** add `levelForProgress` cases to
+  `test/saga_map/world/saga_path_test.dart` (see WAVE 3 below for the exact
+  list) — the file's existing `nodeAt`/depth tests must stay green.
+- **Owner/work item:** W3-2 (`levelForProgress`, additive), W4-1 (constant
+  tuning), W6-1 (`SagaPathPreset` enum).
+
+### Exception 3 — `lib/saga_map/domain/saga_map_state.dart` (the movement SSOT)
+- **Later responsibility requiring modification:** W6-2 (live preset toggle needs
+  to track which `SagaPathPreset` is currently active).
+- **Why modifying the movement SSOT is necessary:** the active preset must live
+  somewhere both the debug overlay (reads it) and `saga_path.dart` (consumes it to
+  pick tuning constants) can reach without a second, competing state object.
+  `SagaMapState` is the one existing app-wide state class; adding a
+  **non-movement** field to it is the smallest-footprint option — deliberately
+  weighed against a second state class, which would violate the "ONE movement
+  SSOT" spirit worse than an adjacent field on the existing one.
+- **Confirm no duplicate movement state is introduced:** the addition must be a
+  preset-selector field only (e.g. `SagaPathPreset pathPreset`) — never a second
+  `progress`, `currentLevel`, `scrollOffset`, `cameraOffset`, or
+  `worldOffset`-like field.
+- **Existing movement semantics/signatures that remain intact unless explicitly
+  reviewed:** `SagaMapState({required progress, required currentLevel})`,
+  `copyWith`, `==`, `hashCode` for `progress`/`currentLevel` — extended (new field
+  with a default), never removed or retyped, without a separate explicit review.
+- **Prohibited regressions:** no new mutable movement field; no change to how
+  `progress`/`currentLevel` are read/written by `SagaScrollPhysics` or
+  `saga_scene_builder.dart`; the existing SSOT grep check
+  (`grep 'double progress'`) must still find exactly one match.
+- **Required tests proving no movement regression:** `saga_scroll_physics_test.dart`
+  and any Wave 3 movement tests must pass unmodified; add or extend a test
+  confirming `SagaMapState` constructed with only `progress`/`currentLevel` (no
+  preset argument) behaves exactly as before the preset field existed.
+- **Owner/work item:** W6-2 only. No other wave may touch this file.
+
+### Exception 4 — `pubspec.yaml`
+- **Later responsibility requiring modification:** W8-3 (audio asset
+  declarations), only if that optional wave is built.
+- **Why additive modification is necessary:** baseline `pubspec.yaml` only
+  declares the 9 pre-existing environment/props assets from Wave 0; audio assets
+  don't exist yet and are sourced fresh in W8-3.
+- **Existing verified behavior that must remain unchanged:** the `flame`/
+  `flame_audio` dependency versions and the 9 already-declared Wave 0 asset
+  entries must not be removed or have their versions changed.
+- **Prohibited regressions:** `flutter pub get` must still resolve cleanly; no
+  asset entry may reference a file that doesn't exist on disk (`docs/assets.md`
+  updated in the same task, per W8-3).
+- **Owner/work item:** W8-3 — additive only, explicitly optional/skippable per
+  §13.5.
+
 ## LOCKED DECISIONS FROM PRIOR PLANNING SESSION
 
 - **Physical Android device (required for Wave 7 / Gate D2-G3, CRITICAL):** may not be
@@ -51,7 +234,65 @@ contradicts it.
   `commit hash` evidence field would apply, mark it "not applicable — repo not under
   version control" rather than inventing one.
 
-## EXECUTION PLAN — 35 tasks across 10 waves (W0–W9)
+## DEVICE/EMULATOR FALLBACK PROTOCOL (Gates D1-G2, D1-G3, Day 1 Exit, W9-1)
+
+Before each of these four gates, run `flutter devices`. Three cases:
+
+1. **Physical device available:** use it — always preferred.
+2. **No physical device, but an emulator is available:** use the emulator. This is
+   acceptable for these four gates specifically (only Gate D2-G3 requires a
+   physical device exclusively, per Locked Decisions above).
+3. **Neither is reachable:** do NOT claim the gate passed on a run you didn't
+   actually perform, and do NOT substitute a description of expected behavior for
+   an observation. Instead:
+   - Run the strongest available static fallback: `flutter analyze` (zero
+     issues) plus `flutter test` (full suite green) plus, where the gate needs
+     visual confirmation, a `flutter build apk --debug` (or equivalent)
+     compile-only check as evidence the app at least builds.
+   - Record explicitly, in the gate's evidence and in the `AD.md` §29 row:
+     "device/emulator unavailable — fallback validation performed (name exactly
+     which of analyze/test/build ran and passed) — device-run gate still
+     pending." Never word this as "gate passed" or "verified" for the run-only
+     portion.
+   - Continue to the next wave rather than stalling — this generalizes the same
+     honest-blocker pattern the Wave 7 device-unavailable rule above already
+     uses for Gate D2-G3.
+
+## PRE-EXECUTION STRUCTURAL PLAN VALIDATION (mandatory before ORCHESTRATE)
+
+Before this plan is approved for execution, the planner/plan validator must check:
+
+A. **Consumer-before-provider inversion** — if task A consumes a responsibility/file
+   that task B owns, B must not depend on A, unless a justified cycle-breaking
+   contract is explicitly documented.
+B. **Verification-vs-ownership contradiction** — a task must not require behavior
+   while simultaneously banning the only implementation mechanism for it, unless
+   that behavior is delegated to an explicit dependency that owns it.
+C. **Responsibility ownership completeness** — every material verb/responsibility in
+   this document (assemble, wire, project, draw, persist, validate, ...) must map to
+   exactly one task's owned paths.
+D. **DAG acyclicity** — the dependency graph must contain no cycles.
+E. **Owned-path coverage** — every file this prompt names must be owned by exactly
+   one task (or an explicitly justified shared-ownership sequence over time).
+F. **Acceptance criteria satisfiability** — each task's acceptance criteria must be
+   achievable using only its own owned paths and its declared dependencies' outputs,
+   with nothing left implicit.
+G. **Derived-state ownership completeness** — for every state field this document
+   documents as derived from another field/SSOT (e.g. `currentLevel` derived from
+   `progress`), confirm: (i) exactly one task explicitly owns writing/updating the
+   derivation, (ii) that task's acceptance criteria require the derivation to
+   actually execute in production code (not merely permit it), and (iii) a
+   verification task or test actually exercises the coupling end-to-end (not just
+   each field in isolation, and not satisfiable by a criteria set that only checks
+   the source field changed).
+
+Checks A–F are exactly the class of gap that caused `run-20260709090051894-25468`
+to fail at TASK-0016 (see WAVE 2 below). Check G is exactly the class of gap that
+caused `run-20260709112606184-87488` to pass its TASK-0008 while leaving Gate
+D1-G3 permanently broken (see Second-Generation Execution State above and WAVE 3
+below) — validate for both before executing, not after.
+
+## EXECUTION PLAN — 36 tasks across 10 waves (W0–W9)
 
 Execute in this order. Each wave has a gate; do not start bonus/polish work if a
 CRITICAL gate fails — stop and fix first (see `AD.md` §21/§25).
@@ -101,18 +342,51 @@ CRITICAL gate fails — stop and fix first (see `AD.md` §21/§25).
   behind-camera results.
 - **W2-2** `test/saga_map/projection/perspective_projector_test.dart` — farther
   projects smaller, trends toward horizon, finite output sweep, safe culling.
-- **W2-3** `lib/saga_map/rendering/saga_scene.dart` — small immutable bounded struct
-  assembled from window→path→projector output. Keep it a plain data holder, do not
-  grow it into a scene graph.
-- **W2-4** `lib/saga_map/saga_map_game.dart` — Flame `Game`/`FlameGame` subclass
-  wiring `SagaMapState` + path/window/projector/painter. No inline domain math — this
-  class must not become a god class.
+- **W2-3** `lib/saga_map/rendering/saga_scene.dart` — immutable bounded scene **data
+  holder only**: owns the scene data representation (window + projected nodes), const
+  constructor, no mutation methods, no scene-graph behavior. Does NOT own the
+  assembly loop that produces its `nodes` list and does NOT provide a factory that
+  performs window/path/projection traversal — that is W2-4's responsibility, not
+  this file's.
+- **W2-4** `lib/saga_map/rendering/saga_scene_builder.dart` — pure scene-**assembly**
+  function only: call `windowFor(state.currentLevel)`, iterate the visible indices,
+  call `nodeAt(index, currentLevel: state.currentLevel)` for each, call
+  `PerspectiveProjector.project(node, state.progress)`, cull null projected nodes,
+  return `SagaScene(window: ..., nodes: ...)`. No mutable state, no drawing, no Flame
+  game lifecycle ownership. Depends only on `SagaMapState`, `saga_path.dart`'s
+  `nodeAt`, `visible_node_window.dart`'s `windowFor`, `PerspectiveProjector`, and
+  `SagaScene`.
 - **W2-5** `lib/saga_map/rendering/saga_map_painter.dart` — far-to-near draw order,
-  consumes `SagaScene`, simple procedural stone shapes (no per-node raster assets),
-  never mutates `progress`. Hoist `Paint`/`Path` objects to fields, don't allocate
-  per-frame.
+  consumes `SagaScene` only, simple procedural stone shapes (no per-node raster
+  assets), never mutates `progress`. Hoist `Paint`/`Path` objects to fields, don't
+  allocate per-frame. Must **not** depend on `saga_map_game.dart`, must **not**
+  assemble the scene itself, must **not** own world/projection traversal — it only
+  draws what W2-4 already assembled.
+- **W2-6** `lib/saga_map/saga_map_game.dart` — Flame `Game`/`FlameGame` subclass.
+  Consumes `SagaMapState`, the W2-4 scene builder, and the W2-5 painter; assembles
+  the per-frame `SagaScene` **only** by calling the W2-4 builder — must **not** call
+  `windowFor` or `nodeAt` directly, must **not** duplicate projection math, must
+  **not** duplicate painter logic. Stays thin — this class must not become a god
+  class. Build this after W2-5: the painter it wires in must already exist. Wire the
+  resulting `GameWidget` into `saga_map_screen.dart` in place of the blank
+  `Scaffold` stub (Recovery-Governance Exception 1).
 - **Gate D1-G2**: static screenshot reads as depth-rich, obvious near/far scale
-  difference, bounded stone count, no per-frame allocation in the hot path.
+  difference, bounded stone count, no per-frame allocation in the hot path. If no
+  device/emulator is reachable, use the Device/Emulator Fallback Protocol above
+  instead of skipping silently.
+
+**Ordering/dependency topology for this wave (unambiguous, do not invert):**
+```
+SagaScene (W2-3, data holder)
+    ↓                    ↓
+SceneBuilder (W2-4)   Painter (W2-5)
+    ↓                    ↓
+        SagaMapGame (W2-6)
+```
+`SagaMapGame` may depend on the scene builder and the painter. Neither the scene
+builder nor the painter may depend on `SagaMapGame`. The scene builder does not
+depend on the painter; the painter does not depend on the scene builder unless a
+future wave explicitly justifies it in writing.
 
 ### WAVE 3 — Interaction (Gate D1-G3, CRITICAL)
 - **W3-1** `lib/saga_map/navigation/saga_scroll_physics.dart` — drag delta →
@@ -120,18 +394,79 @@ CRITICAL gate fails — stop and fix first (see `AD.md` §21/§25).
   settles below a threshold; never binds to a Flutter `ListView` scroll offset.
 - **W3-2** Wire drag input (Flame `DragCallbacks` or `GestureDetector` around
   `GameWidget`) into `SagaScrollPhysics` → `SagaMapState.progress` → the render
-  pipeline, completing the full `AD.md` §5.1 pipeline end-to-end.
+  pipeline, completing the full `AD.md` §5.1 pipeline end-to-end — AND own the
+  `progress` → `currentLevel` derivation this pipeline requires (`AD.md` §17.2,
+  §5.1: "advancing progress advances integer window"). Specifically,
+  `onDragUpdate` (or equivalent) must, in the same state transition:
+  - compute clamped absolute `progress` (never negative) from the current
+    `progress` plus the drag-derived delta — `progress` remains the one
+    absolute, never-reset movement value;
+  - derive `currentLevel` from that same clamped `progress` via the new
+    canonical `levelForProgress(double progress)` helper added to
+    `saga_path.dart` (Recovery-Governance Exception 2) — never an
+    independently incremented/decremented `currentLevel`, never a second
+    accumulator or offset;
+  - update `progress` and `currentLevel` together via a single `copyWith`
+    call — never in two steps that could observe an inconsistent state;
+  - correctly advance multiple levels in one large drag delta (no per-level
+    loop needed — `levelForProgress` is a pure `floor` division, so this is
+    automatic) and correctly retreat `currentLevel` on reverse drag, down to
+    a hard floor of `currentLevel == 0`;
+  - not duplicate any projection math and not introduce any state field
+    beyond the existing `progress`/`currentLevel` pair.
+  Touches `saga_map_game.dart`/`saga_map_screen.dart` (Recovery-Governance
+  Exception 1) and `saga_path.dart` (Recovery-Governance Exception 2, for
+  `levelForProgress` only). **Supersedes the prior TASK-0008 implementation
+  from `run-20260709112606184-87488` — see Second-Generation Execution State
+  above; do not treat any existing `onDragUpdate` as already satisfying this.**
 - **W3-3** `test/saga_map/navigation/saga_scroll_physics_test.dart` — drag changes
-  progress, release inertia continues, friction decays, settles, `dt`-aware.
-- **Gate D1-G3 (CRITICAL)**: continuous drag traversal feels apparently infinite, no
-  discontinuity at window-boundary changes, `progress` is verifiably the only mutated
-  movement value (grep for a second `double progress`-like field). **If this gate
-  fails, stop all bonus work and fix it before touching Wave 4.**
+  progress, release inertia continues, friction decays, settles, `dt`-aware
+  (unchanged from before). Extend `test/saga_map/world/saga_path_test.dart`
+  with `levelForProgress` cases: (A) below the first threshold → level 0,
+  (B) exactly at a threshold → that level, (C) just above a threshold → that
+  level, (D) a multi-threshold jump in one call → the correct higher level,
+  (E) reverse/decreasing progress → level decreases accordingly, (F) clamp
+  at zero for any non-positive progress. Existing `nodeAt`/depth tests in
+  that file must pass unmodified.
+- **W3-4** `test/saga_map/saga_map_game_test.dart` (new file) — drive
+  `onDragUpdate` directly (no widget pump needed for pure state assertions):
+  (G) `progress` stays absolute and non-negative through a drag sequence,
+  (H) `currentLevel` equals `levelForProgress(progress)` after every single
+  drag update, (I) a cumulative forward drag spanning several thresholds
+  advances `currentLevel` by more than one level in one step, (J) a long
+  forward drag (many levels) leaves `buildSagaScene(...)`'s resulting
+  `SagaScene.nodes` non-empty (the non-blank-scene regression this repair
+  exists to prevent). (K) and (L): rerun the full existing suite —
+  `saga_path_test.dart`, `visible_node_window_test.dart`,
+  `perspective_projector_test.dart`, `saga_scene_builder_test.dart`,
+  `saga_scroll_physics_test.dart` — all must still pass unmodified.
+- **Gate D1-G3 (CRITICAL)**: continuous drag traversal feels apparently
+  infinite — the visible window must keep advancing and the scene must
+  never eventually go blank, no matter how long the drag continues; no
+  discontinuity at window-boundary changes. `progress` is the only
+  primary/source movement value — `currentLevel` is a deterministic derived
+  window anchor computed from `progress` via the canonical
+  `levelForProgress` helper (W3-2/`saga_path.dart`), not an independent
+  accumulator: grep confirms no second `double progress`-like field, no
+  second offset, no duplicate movement state. The canonical invariant
+  `currentLevel == max(0, floor(progress / levelDepthSpacing))` (using
+  `saga_path.dart`'s existing depth-spacing constant — never a duplicated
+  value) must hold after every drag update, and `currentLevel` must be
+  observed actually advancing as `progress` crosses each level-spacing
+  threshold — not merely theoretically derivable. Do not satisfy this gate
+  with a renderer/projection workaround (e.g. widening the visible window,
+  changing culling thresholds, or otherwise masking a `currentLevel` that
+  still never advances) — the underlying movement state itself must be
+  correct. **If this gate fails, stop all bonus work and fix it before
+  touching Wave 4.** If no device/emulator is reachable, use the
+  Device/Emulator Fallback Protocol above — do not skip this CRITICAL gate
+  silently.
 
 ### WAVE 4 — Core visual depth (Day 1 Exit Gate)
 - **W4-1** Extend `saga_map_painter.dart` with fog/atmosphere blending from
   `fogFactor` (color/alpha only — no blur), procedural stone shadows, tuned path
   meander constants (verify `saga_path_test.dart` still passes after tuning).
+  `saga_path.dart` tuning is Recovery-Governance Exception 2.
 - **W4-2** Extend `saga_map_painter.dart` to render `assets/environment/castle.png`
   as a distance-aware horizon anchor — scale/haze/opacity derived purely from existing
   depth/progress, no new mutable offset field. Single asset only; do not touch
@@ -142,12 +477,14 @@ CRITICAL gate fails — stop and fix first (see `AD.md` §21/§25).
 - **Day 1 Exit Gate**: Android runnable, convincing depth, continuous drag + inertia,
   infinite logical progression, bounded visible count, castle visible, single
   progression SSOT, core tests green. **Do not start Day 2 work until this is green.**
+  If no device/emulator is reachable, use the Device/Emulator Fallback Protocol
+  above instead of skipping silently.
 
 ### WAVE 5 — Debug proof (Gate D2-G1)
 - **W5-1** `lib/saga_map/debug/saga_debug_overlay.dart` — toggleable overlay showing
   REAL `progress`, current index, live visible-node count, path preset name, and FPS
   from a real measurement source (never hardcode 60). Wire toggle into
-  `saga_map_screen.dart`.
+  `saga_map_screen.dart` (Recovery-Governance Exception 1).
 - **W5-2** Extend the debug overlay (or painter, debug-guarded) with projection debug
   annotations (horizon line, index, relative depth, scale per node) reusing the
   already-computed `SagaScene` — do not recompute projection twice.
@@ -157,11 +494,17 @@ CRITICAL gate fails — stop and fix first (see `AD.md` §21/§25).
 ### WAVE 6 — Extensibility proof (Gate D2-G2)
 - **W6-1** Extend `saga_path.dart` with `enum SagaPathPreset { gentle, dramatic }` —
   same formula, different tuning constants selected by a plain `switch`. No strategy
-  interface for two cases (violates §15 rule 7).
-- **W6-2** Add a live preset toggle (HUD or debug overlay). Verify zero diffs to
-  projection/rendering/physics files were needed — that diff-count IS the extensibility
-  proof. Full test suite still green.
-- **Gate D2-G2**: world-generation variation required zero renderer rewrite.
+  interface for two cases (violates §15 rule 7). Recovery-Governance Exception 2.
+- **W6-2** Add a live preset toggle (HUD or debug overlay), touching only
+  `saga_map_state.dart` (Recovery-Governance Exception 3) and
+  `saga_debug_overlay.dart`. Verify the extensibility proof **without git** (git is
+  out of scope — see Locked Decisions above, do not reference commits or a commit
+  diff): record the exact list of files this task modifies and confirm zero files
+  under `lib/saga_map/rendering/`, `lib/saga_map/projection/`, or
+  `lib/saga_map/navigation/` appear in it — that file list, not a commit diff, IS
+  the extensibility proof. Full test suite still green.
+- **Gate D2-G2**: world-generation variation required zero renderer rewrite,
+  confirmed via the W6-2 file list above (not a git diff).
 
 ### WAVE 7 — Performance evidence (Gate D2-G3, CRITICAL — see "Locked Decisions" above)
 - **W7-1** `flutter run --profile -d <physical-android-device>`; ~30s continuous
@@ -180,21 +523,25 @@ CRITICAL gate fails — stop and fix first (see `AD.md` §21/§25).
 - **W8-1** Verify `docs/assets.md` still matches the `pubspec.yaml assets:` block —
   no drift.
 - **W8-2** `lib/ui/saga_hud.dart` — top counters/buttons/debug-toggle entry point,
-  reads `SagaMapState` live, never keeps a local copy of progress.
+  reads `SagaMapState` live, never keeps a local copy of progress. Wire into
+  `saga_map_screen.dart` (Recovery-Governance Exception 1).
 - **W8-3** `lib/saga_map/audio/saga_audio.dart` — minimal `flame_audio` owner class:
   preload 2–3 short SFX (tap/select, completion), play on real domain events, never
   mutates state, fails silently (debug-log only). NOTE: no audio asset files exist yet
-  — sourcing them (and adding `assets/audio/`, declaring in `pubspec.yaml`, recording
-  provenance in `docs/assets.md`) is a real prerequisite not separately itemized in
-  `AD.md`'s ledger. This whole task is optional/skippable per §13.5 if time-constrained
-  — skip cleanly rather than half-build it.
+  — sourcing them (and adding `assets/audio/`, declaring in `pubspec.yaml` —
+  Recovery-Governance Exception 4 — recording provenance in `docs/assets.md`) is a
+  real prerequisite not separately itemized in `AD.md`'s ledger. This whole task is
+  optional/skippable per §13.5 if time-constrained — skip cleanly rather than
+  half-build it.
 - **W8-4** Optional: one tap interaction on the current node with a small
   animation/particle response — genuinely optional, easily removable if it causes
   jank (remove it if so, per the fallback map).
 
 ### WAVE 9 — Submission closure (Final Gate)
 - **W9-1** `flutter analyze`, `flutter test` (full suite), final `flutter run -d
-  <android>` on the same device used in W7-1 if available.
+  <android>` on the same device used in W7-1 if available. If no device/emulator is
+  reachable, use the Device/Emulator Fallback Protocol above instead of skipping
+  silently.
 - **W9-2** Rewrite `README.md` per `AD.md` §28: assignment summary, exact run
   commands, one architecture diagram (the §5.1 pipeline), dependency rationale (link
   `ARCHITECTURE_DECISIONS.md`), infinite-world explanation, performance summary (from

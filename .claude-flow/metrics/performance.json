@@ -1,0 +1,57 @@
+{
+  "timestamp": "2026-07-09T11:47:39.914Z",
+  "mode": "headless",
+  "workerType": "optimize",
+  "model": "sonnet",
+  "durationMs": 110066,
+  "executionId": "optimize_1783597549848_3u0maa",
+  "success": true,
+  "findings": {
+    "sections": [
+      {
+        "title": "What doesn't apply (and why)",
+        "content": "\n- **N+1 queries**: no database, no network layer, no repository/ORM anywhere in the codebase. N/A.\n- **Memory leaks**: no `StatefulWidget`, no `AnimationController`/`StreamController`/listeners, nothing with a `dispose()` obligation exists yet — everything is `StatelessWidget` or pure functions. Nothing to leak. Watch this in the next wave: `saga_scroll_physics.dart`'s inertia math is wired to nothing yet, but when it gets hooked to a ticker/`AnimationController`, that's where a missing `dispose()` would first become possible.\n\n",
+        "level": 2
+      },
+      {
+        "title": "Real finding: painter repaints every frame regardless of content (the \"unnecessary re-render\" equivalent)",
+        "content": "\n`lib/saga_map/rendering/saga_map_painter.dart:77-78`:\n```dart\nbool shouldRepaint(covariant SagaMapPainter oldDelegate) =>\n    oldDelegate.scene != scene;\n```\n`SagaScene` (`saga_scene.dart`) has no `==`/`hashCode` override, and `buildSagaScene` (`saga_scene_builder.dart:13`) constructs a **brand-new** `SagaScene` every call. So `!=` is identity comparison on a value that's never the same object twice — `shouldRepaint` always returns `true`, even when `progress`/`currentLevel` haven't changed and the frame is visually identical. This is exactly the React \"new object reference every render defeats `React.memo`\" bug, just in `CustomPainter` form. It'll cause every rebuild to trigger a full repaint of every visible stone once the screen is actually wired up.\n\nFix: give the scene graph value equality, reusing the pattern already in `SagaMapState` (rung 2 — copy what's already in the codebase, don't invent a new convention):\n\n```dart\n// saga_node.dart\n@override\nbool operator ==(Object other) =>\n    other is SagaNode &&\n    index == other.index && x == other.x && depth == other.depth && state == other.state;\n@override\nint get hashCode => Object.hash(index, x, depth, state);\n```\n```dart\n// perspective_projector.dart (ProjectedNode)\n@override\nbool operator ==(Object other) =>\n    other is ProjectedNode &&\n    node == other.node && screenX == other.screenX &&\n    screenY == other.screenY && scale == other.scale && fogFactor == other.fogFactor;\n@override\nint get hashCode => Object.hash(node, screenX, screenY, scale, fogFactor);\n```\n```dart\n// visible_node_window.dart\n@override\nbool operator ==(Object other) =>\n    other is VisibleNodeWindow && start == other.start && end == other.end;\n@override\nint get hashCode => Object.hash(start, end);\n```\n```dart\n// saga_scene.dart\nimport 'package:flutter/foundation.dart' show listEquals;\n...\n@override\nbool operator ==(Object other) =>\n    other is SagaScene && window == other.window && listEquals(nodes, other.nodes);\n@override\nint get hashCode => Object.hash(window, Object.hashAll(nodes));\n```\n`listEquals` is already reachable via `flutter/foundation.dart` → no new dependency (rung 3, stdlib/SDK covers it).\n\n",
+        "level": 2
+      },
+      {
+        "title": "Redundant computation — real but not worth fixing yet",
+        "content": "\n`nodeAt`/`x(index)` (`saga_path.dart`) recompute `sin()` for every node in the ~27-item window on every single frame, even though geometry only depends on `index` (not `progress`), and only the projector's output actually needs to change per-frame. Technically redundant — but 27 `sin()` calls/frame is nanoseconds, not a bottleneck on any target device. Caching this now would be complexity for a win that doesn't exist. Skip; revisit only if profiling ever shows `nodeAt` on a hot path (it won't).\n\n",
+        "level": 2
+      },
+      {
+        "title": "Caching opportunities",
+        "content": "None to add today — the whole pipeline is stateless/pure by design (that's explicitly documented in the file comments), and the one place identity-based memoization matters (`shouldRepaint`) is the fix above, not a cache.\n\nExecution Ledger\n- Route: main-direct (read all 13 lib files directly; too small to warrant repo-scanner)\n- Model/process: main session, Sonnet 5\n- Tools: 3 Bash + 12 Read calls\n- Token class: small\n- Result: Most of the requested checklist (N+1, memory leaks, React re-renders) doesn't map onto this pre-wiring Flutter/Flame codebase; one real bug found (SagaScene lacks value equality → shouldRepaint always fires) with a concrete fix.\n- Next: ask whether to apply the equality-fix diffs now, or hold until the screen is actually wired to CustomPaint.",
+        "level": 2
+      }
+    ],
+    "codeBlocks": [
+      {
+        "language": "dart",
+        "code": "bool shouldRepaint(covariant SagaMapPainter oldDelegate) =>\n    oldDelegate.scene != scene;"
+      },
+      {
+        "language": "dart",
+        "code": "// saga_node.dart\n@override\nbool operator ==(Object other) =>\n    other is SagaNode &&\n    index == other.index && x == other.x && depth == other.depth && state == other.state;\n@override\nint get hashCode => Object.hash(index, x, depth, state);"
+      },
+      {
+        "language": "dart",
+        "code": "// perspective_projector.dart (ProjectedNode)\n@override\nbool operator ==(Object other) =>\n    other is ProjectedNode &&\n    node == other.node && screenX == other.screenX &&\n    screenY == other.screenY && scale == other.scale && fogFactor == other.fogFactor;\n@override\nint get hashCode => Object.hash(node, screenX, screenY, scale, fogFactor);"
+      },
+      {
+        "language": "dart",
+        "code": "// visible_node_window.dart\n@override\nbool operator ==(Object other) =>\n    other is VisibleNodeWindow && start == other.start && end == other.end;\n@override\nint get hashCode => Object.hash(start, end);"
+      },
+      {
+        "language": "dart",
+        "code": "// saga_scene.dart\nimport 'package:flutter/foundation.dart' show listEquals;\n...\n@override\nbool operator ==(Object other) =>\n    other is SagaScene && window == other.window && listEquals(nodes, other.nodes);\n@override\nint get hashCode => Object.hash(window, Object.hashAll(nodes));"
+      }
+    ]
+  },
+  "rawOutputPreview": "Read the whole `lib/` tree (13 Dart files, ~360 lines) — this is a Flutter/CustomPainter game screen (Flame-adjacent), not a React/SQL app, and it's pre-wiring: `SagaMapScreen` is still an empty `Scaffold()`, nothing renders yet. So most of the requested checklist maps to \"doesn't exist here\" rather than \"found and ignored.\" Reporting honestly rather than padding with invented findings.\n\n## What doesn't apply (and why)\n\n- **N+1 queries**: no database, no network layer, no repository/ORM anywhere in the codebase. N/A.\n- **Memory leaks**: no `StatefulWidget`, no `AnimationController`/`StreamController`/listeners, nothing with a `dispose()` obligation exists yet — everything is `StatelessWidget` or pure functions. Nothing to leak. Watch this in the next wave: `saga_scroll_physics.dart`'s inertia math is wired to nothing yet, but when it gets hooked to a ticker/`AnimationController`, that's where a missing `dispose()` would first become possible.\n\n## Real finding: painter repaints every frame regardless of content (the \"unnecessary re-render\" equivalent)\n\n`lib/saga_map/rendering/saga_map_painter.dart:77-78`:\n```dart\nbool shouldRepaint(covariant SagaMapPainter oldDelegate) =>\n    oldDelegate.scene != scene;\n```\n`SagaScene` (`saga_scene.dart`) has no `==`/`hashCode` override, and `buildSagaScene` (`saga_scene_builder.dart:13`) constructs a **brand-new** `SagaScene` every call. So `!=` is identity comparison on a value that's never the same object twice — `shouldRepaint` always returns `true`, even when `progress`/`currentLevel` haven't changed and the frame is visually identical. This is exactly the React \"new object reference every render defeats `React.memo`\" bug, just in `CustomPainter` form. It'll cause every rebuild to trigger a full repaint of every visible stone once the screen is actually wired up.\n\nFix: give the scene graph value equality, reusing the pattern already in `SagaMapState` (rung 2 — copy what's already in the codebase, don't invent a new convention):\n",
+  "rawOutputLength": 4603
+}

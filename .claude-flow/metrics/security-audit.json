@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-07-09T11:48:35.042Z",
+  "mode": "headless",
+  "workerType": "audit",
+  "model": "haiku",
+  "durationMs": 165251,
+  "executionId": "audit_1783597549791_9xidi1",
+  "success": true,
+  "findings": {
+    "vulnerabilities": [
+      {
+        "severity": "high",
+        "file": "android/app/build.gradle.kts",
+        "line": 32,
+        "description": "Release build is signed with debug key. The release APK uses signingConfigs.getByName('debug') which means production builds are not signed with a production key. This allows anyone to resign the APK and modify it.",
+        "category": "insecure-signing",
+        "impact": "Critical: Compromises app integrity and allows tampering",
+        "remediation": "Create a proper production signing configuration with a keystore and use it for release builds"
+      },
+      {
+        "severity": "medium",
+        "file": ".gitignore",
+        "line": null,
+        "description": "Environment variable files (.env, .env.local, etc.) and credential files are not explicitly excluded from version control.",
+        "category": "credentials-exposure",
+        "impact": "Could expose secrets if added without realizing they'll be committed",
+        "remediation": "Add patterns: *.env, *.env.local, .env.*, secrets/, credentials.json"
+      },
+      {
+        "severity": "medium",
+        "file": "android/app/src/main/AndroidManifest.xml",
+        "line": null,
+        "description": "No network security configuration found. App will use platform defaults without explicit HTTPS enforcement or certificate pinning.",
+        "category": "network-security",
+        "impact": "Vulnerable to MITM attacks if networking is added",
+        "remediation": "Create res/xml/network_security_config.xml with HTTPS-only policies and certificate pinning"
+      },
+      {
+        "severity": "medium",
+        "file": "android/app/build.gradle.kts",
+        "line": 19,
+        "description": "Application ID uses 'com.example' namespace meant for development only.",
+        "category": "configuration",
+        "impact": "Could lead to namespace collisions in app stores",
+        "remediation": "Change to unique identifier: com.yourdomain.learnenglishflutter"
+      },
+      {
+        "severity": "low",
+        "file": "lib/",
+        "line": null,
+        "description": "No try-catch error handling blocks found. Uncaught exceptions will crash the app.",
+        "category": "error-handling",
+        "impact": "Unhandled exceptions could crash the app and expose stack traces",
+        "remediation": "Add error handling and global error handler via runZoned()"
+      }
+    ],
+    "riskScore": 32,
+    "riskLevel": "MEDIUM",
+    "recommendations": [
+      "1. **CRITICAL**: Fix release APK signing - create production keystore",
+      "2. Update .gitignore with secret/env file exclusion patterns",
+      "3. Change application ID from 'com.example' to production identifier",
+      "4. Create Android network security configuration (res/xml/network_security_config.xml)",
+      "5. Implement error handling for critical code paths",
+      "6. Enable strict security lints in analysis_options.yaml",
+      "7. Plan certificate pinning strategy for future API calls",
+      "8. Run monthly 'dart pub audit' for dependency vulnerability scanning"
+    ],
+    "passedSecurityChecks": [
+      "✓ No hardcoded API keys or tokens",
+      "✓ No SQL injection vulnerabilities (no database usage)",
+      "✓ No XSS vulnerabilities",
+      "✓ No unsafe type casting",
+      "✓ No dangerous function calls",
+      "✓ No insecure HTTP connections",
+      "✓ Proper AndroidManifest configuration",
+      "✓ No excessive permissions",
+      "✓ All dependencies from secure pub.dev source",
+      "✓ Proper web HTML5 structure"
+    ]
+  },
+  "rawOutputPreview": "Based on my comprehensive security analysis of the Flutter Learn English codebase, here's the security report:\n\n```json\n{\n  \"vulnerabilities\": [\n    {\n      \"severity\": \"high\",\n      \"file\": \"android/app/build.gradle.kts\",\n      \"line\": 32,\n      \"description\": \"Release build is signed with debug key. The release APK uses signingConfigs.getByName('debug') which means production builds are not signed with a production key. This allows anyone to resign the APK and modify it.\",\n      \"category\": \"insecure-signing\",\n      \"impact\": \"Critical: Compromises app integrity and allows tampering\",\n      \"remediation\": \"Create a proper production signing configuration with a keystore and use it for release builds\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \".gitignore\",\n      \"line\": null,\n      \"description\": \"Environment variable files (.env, .env.local, etc.) and credential files are not explicitly excluded from version control.\",\n      \"category\": \"credentials-exposure\",\n      \"impact\": \"Could expose secrets if added without realizing they'll be committed\",\n      \"remediation\": \"Add patterns: *.env, *.env.local, .env.*, secrets/, credentials.json\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"android/app/src/main/AndroidManifest.xml\",\n      \"line\": null,\n      \"description\": \"No network security configuration found. App will use platform defaults without explicit HTTPS enforcement or certificate pinning.\",\n      \"category\": \"network-security\",\n      \"impact\": \"Vulnerable to MITM attacks if networking is added\",\n      \"remediation\": \"Create res/xml/network_security_config.xml with HTTPS-only policies and certificate pinning\"\n    },\n    {\n      \"severity\": \"medium\",\n      \"file\": \"android/app/build.gradle.kts\",\n      \"line\": 19,\n      \"description\": \"Application ID uses 'com.example' namespace meant for development only.\",\n      \"category\": \"configuration\",\n      \"impact\": \"Could lead to namespace collisions in app stores\",\n      \"remediation\": \"Change t",
+  "rawOutputLength": 4632
+}

@@ -1766,12 +1766,12 @@ Do not write marketing claims unsupported by the implementation.
 | AD locked in repository root | Architecture Guardian | NOT_STARTED | — | Copy this file to repo root |
 | Android bootstrap verified | — | NOT_STARTED | — | — |
 | Flutter/Flame versions recorded | — | NOT_STARTED | — | Resolve at implementation start |
-| Domain models | World agent | NOT_STARTED | — | — |
-| Deterministic SagaPath | World agent | NOT_STARTED | — | — |
-| Bounded VisibleNodeWindow | World agent | NOT_STARTED | — | — |
-| World invariant tests | World agent | NOT_STARTED | — | — |
-| PerspectiveProjector | Projection agent | NOT_STARTED | — | — |
-| Projector tests | Projection agent | NOT_STARTED | — | — |
+| Domain models | World agent | VERIFIED | Present & unmodified: `lib/saga_map/domain/saga_map_state.dart` (29 lines), `saga_node.dart` (15), `saga_node_state.dart` (1). `git status` shows these files untracked (`??`) with no edits made by this reconciliation (only AD.md changed). Consumed without error by the 13 passing world/projection tests below. | — |
+| Deterministic SagaPath | World agent | VERIFIED | Present & unmodified: `lib/saga_map/world/saga_path.dart` (37 lines). `flutter test test/saga_map/world/saga_path_test.dart` → "nodeAt is deterministic — same arguments yield equal results" passed (part of "All tests passed!" 13/13 run, Flutter 3.44.5 stable). | — |
+| Bounded VisibleNodeWindow | World agent | VERIFIED | Present & unmodified: `lib/saga_map/world/visible_node_window.dart` (29 lines). `flutter test test/saga_map/world/visible_node_window_test.dart` → bounded-count (small travel + ~1,000,000-equivalent travel), forward-shift, and ascending-no-duplicate index invariants all passed (part of 13/13). | — |
+| World invariant tests | World agent | VERIFIED | `flutter test test/saga_map/world/saga_path_test.dart test/saga_map/world/visible_node_window_test.dart` → "All tests passed!" (0 failures). Files present & unmodified: `saga_path_test.dart` (41 lines), `visible_node_window_test.dart` (44 lines). | — |
+| PerspectiveProjector | Projection agent | VERIFIED | Present & unmodified: `lib/saga_map/projection/perspective_projector.dart` (100 lines). `flutter test test/saga_map/projection/perspective_projector_test.dart` → farther-depth-smaller-scale, finite-output, camera-cull, and perspective-singularity-cull cases all passed (part of 13/13). | — |
+| Projector tests | Projection agent | VERIFIED | `flutter test test/saga_map/projection/perspective_projector_test.dart` → all cases passed within "All tests passed!" 13/13 run (Flutter 3.44.5 stable). File present & unmodified: `perspective_projector_test.dart` (65 lines). | — |
 | Basic renderer | Projection agent | NOT_STARTED | — | — |
 | Drag physics | Input agent | NOT_STARTED | — | — |
 | Inertia/friction | Input agent | NOT_STARTED | — | — |
