@@ -34,7 +34,7 @@ void main() {
       final node = nodeAt(-5, currentLevel: 0);
       expect(node.index, -5);
       expect(node.x.isFinite, isTrue);
-      expect(node.depth, -700); // -5 * depthSpacing(140)
+      expect(node.depth, -5 * depth(1)); // linear in index, no lower bound
       expect(node.state, isNotNull);
     });
 

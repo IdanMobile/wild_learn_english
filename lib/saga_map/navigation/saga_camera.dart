@@ -16,7 +16,7 @@ class SagaCamera {
   double yaw = 0;
   double height = 0.48;
   double angle = 0.17;
-  double response = 14;
+  double response = 2.5;
 
   void setTarget(double progress) {
     targetProgress = progress;

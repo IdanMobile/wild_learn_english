@@ -2,11 +2,11 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 import '../ui/saga_hud.dart';
+import 'audio/saga_audio.dart';
 import 'debug/saga_debug_overlay.dart';
 import 'domain/saga_map_state.dart';
 import 'navigation/saga_camera.dart';
 import 'saga_map_game.dart';
-import 'world/saga_path.dart';
 
 class SagaMapScreen extends StatefulWidget {
   const SagaMapScreen({super.key});
@@ -21,24 +21,32 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
     const SagaMapState(progress: 0, currentLevel: 0),
   );
   final _cameraNotifier = ValueNotifier(const SagaCameraSnapshot.zero());
+  final _starPulseNotifier = ValueNotifier(0);
   final _stepCountController = TextEditingController(text: '100');
   late final SagaMapGame _game = SagaMapGame(
     stateNotifier: _stateNotifier,
     cameraDebugNotifier: _cameraNotifier,
-    onNodePressed: _showNodePanel,
+    starPulseNotifier: _starPulseNotifier,
   );
 
   bool _debugVisible = false;
-  bool _infiniteSteps = false;
+  bool _infiniteSteps = true;
   int _stepCount = 100;
   double _cameraHeight = 0.48;
   double _cameraAngle = 0.17;
-  double _cameraResponse = 14;
+  double _cameraResponse = 2.5;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_infiniteSteps) _game.setStepLimit(stepCount: null);
+  }
 
   @override
   void dispose() {
     _stateNotifier.dispose();
     _cameraNotifier.dispose();
+    _starPulseNotifier.dispose();
     _stepCountController.dispose();
     super.dispose();
   }
@@ -59,15 +67,26 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
           ),
           SagaHud(
             stateListenable: _stateNotifier,
+            starPulse: _starPulseNotifier,
             debugVisible: _debugVisible,
-            onPresetPressed: _game.togglePathPreset,
-            onLevelChanged: _game.jumpLevels,
+            onPresetPressed: () {
+              SagaAudio.uiTap();
+              _game.togglePathPreset();
+            },
+            onLevelChanged: (delta) {
+              SagaAudio.uiTap();
+              _game.jumpLevels(delta);
+            },
             onStarTargetChanged: (center) => _updateRewardTarget(star: center),
             onEnergyTargetChanged: (center) =>
                 _updateRewardTarget(energy: center),
-            onAction: _showHudPanel,
+            onAction: (title, message) {
+              SagaAudio.uiTap();
+              _showHudPanel(title, message);
+            },
             stepCount: _infiniteSteps ? null : _stepCount,
             onDebugPressed: () {
+              SagaAudio.uiTap();
               setState(() => _debugVisible = !_debugVisible);
             },
           ),
@@ -119,28 +138,6 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
         energy: energy == null ? null : box.globalToLocal(energy),
       );
     }
-  }
-
-  void _showNodePanel(int level) {
-    final prop = propAt(level);
-    final title = switch (prop) {
-      SagaPropKind.chest => 'Treasure step',
-      SagaPropKind.orb => 'Crystal orb',
-      SagaPropKind.crystal => 'Floating crystal',
-      null => 'Saga step ${level + 1}',
-    };
-    final message = switch (prop) {
-      SagaPropKind.chest =>
-        'This step contains a reward chest. Complete the lesson to open it.',
-      SagaPropKind.orb =>
-        'This orb marks a magical vocabulary challenge on step ${level + 1}.',
-      SagaPropKind.crystal =>
-        'This crystal marks a bonus pronunciation challenge on step ${level + 1}.',
-      null when level == _game.state.currentLevel =>
-        'This is your current lesson. The active rings show its progress.',
-      null => 'Moving the camera to saga step ${level + 1}.',
-    };
-    _showHudPanel(title, message);
   }
 
   void _showHudPanel(String title, String message) {

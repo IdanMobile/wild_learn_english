@@ -55,7 +55,7 @@ void main() {
       const combo = SagaFxState(completedLevel: 4, comboNumber: 3);
 
       expect(regular.rewardArrivalAge, lessThan(combo.rewardArrivalAge));
-      expect(combo.rewardArrivalAge, 3.05);
+      expect(combo.rewardArrivalAge, 5.45);
     });
   });
 }

@@ -3,6 +3,7 @@ import 'package:learn_english_flutter/saga_map/domain/saga_map_state.dart';
 import 'package:learn_english_flutter/saga_map/projection/perspective_projector.dart';
 import 'package:learn_english_flutter/saga_map/rendering/saga_scene_builder.dart';
 import 'package:learn_english_flutter/saga_map/world/visible_node_window.dart';
+import 'package:learn_english_flutter/saga_map/world/saga_path.dart';
 
 void main() {
   const projector = PerspectiveProjector(
@@ -47,7 +48,7 @@ void main() {
       // progress past the nearest window depths pushes low indices behind
       // the camera, so the scene holds fewer nodes than the window.
       final scene = buildSagaScene(
-        const SagaMapState(progress: 1200, currentLevel: 10),
+        SagaMapState(progress: depth(10).toDouble(), currentLevel: 10),
         projector,
       );
       expect(scene.nodes.length, lessThan(scene.window.length));

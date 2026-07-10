@@ -9,7 +9,7 @@ class SagaMapState {
   const SagaMapState({
     required this.progress,
     required this.currentLevel,
-    this.pathPreset = SagaPathPreset.gentle,
+    this.pathPreset = SagaPathPreset.dramatic,
     this.energy = 29,
     this.stars = 39,
   });

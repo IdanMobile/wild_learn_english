@@ -23,13 +23,13 @@ class SagaFxState {
 
   double rewardT(double time) => smooth01((ageAt(time) - 0.18) / 0.95);
 
-  double get rewardArrivalAge => hasCombo ? 3.05 : 1.08;
+  double get rewardArrivalAge => hasCombo ? 5.45 : 1.08;
 
-  double comboT(double time) => smooth01(ageAt(time) / 3.8);
+  double comboT(double time) => smooth01(ageAt(time) / 4.8);
 
   int lightningFrameIndex(double time, int frameCount) {
     if (frameCount <= 0) return 0;
-    final t = (ageAt(time) / 0.72).clamp(0.0, 0.999);
+    final t = (ageAt(time) / 1.3).clamp(0.0, 0.999);
     return (t * frameCount).floor();
   }
 

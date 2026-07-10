@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import 'audio/saga_audio.dart';
 import 'domain/saga_map_state.dart';
 import 'navigation/saga_camera.dart';
 import 'navigation/saga_scroll_physics.dart';
@@ -30,11 +31,14 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
     this.stateNotifier,
     this.cameraDebugNotifier,
     this.onNodePressed,
+    this.starPulseNotifier,
   }) : _state = state ?? const SagaMapState(progress: 0, currentLevel: 0);
 
   final ValueNotifier<SagaMapState>? stateNotifier;
   final ValueNotifier<SagaCameraSnapshot>? cameraDebugNotifier;
   final ValueChanged<int>? onNodePressed;
+  // Bumped each time a bar's reward stars reach the HUD chip, so it can pulse.
+  final ValueNotifier<int>? starPulseNotifier;
   Image? _skyImage;
   Image? _mountainsImage;
   Image? _hazeImage;
@@ -54,13 +58,30 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
   int _lastStepLevel = 0;
   int? _maxLevel = 99;
   double _inertiaVelocity = 0;
+  double? _glideFrom;
+  double _glideTo = 0;
+  double _glideElapsed = 0;
+  double _glideDuration = 0;
+  // Seconds for a current step's 3 progress bars to fill (shared with render).
+  static const double _stepFillDuration = 1.9;
+  // Level whose completion celebration waits for its bars to finish filling.
+  int? _pendingCompletionLevel;
+  // Reward stars in flight to the HUD chip, one burst per filled progress bar.
+  final List<({double birth, Offset from, double seed})> _barStars = [];
+  int _barsAwarded = 0;
+  // In-flight bar-star bursts: when each reaches the chip its [stars] are added
+  // to the total (the step's reward is distributed across its 3 bars).
+  final List<({double time, int stars})> _barStarLandings = [];
+  static const double _barStarFlight = 0.8; // matches the painter flight time
+  // Bonus stars a special (prop) step drops from the item poof — must match the
+  // number of poof stars the painter flies to the chip.
+  static const int _propStarBonus = 10;
   var _fxState = const SagaFxState();
   late final SagaCamera _camera = SagaCamera(progress: state.progress);
   SagaScene? _latestScene;
   Offset? _starTarget;
   Offset? _energyTarget;
   int _creditedFxSerial = 0;
-  int _pendingStars = 0;
   int _pendingEnergy = 0;
   bool _notifiersActive = true;
   bool _stateNotifyQueued = false;
@@ -79,7 +100,22 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
   @override
   void onRemove() {
     _notifiersActive = false;
+    SagaAudio.stopAmbient();
     super.onRemove();
+  }
+
+  @override
+  void lifecycleStateChange(AppLifecycleState state) {
+    super.lifecycleStateChange(state);
+    // Screen off / app backgrounded: silence the loop and freeze the engine so
+    // nothing keeps ticking or playing. Restore both on return to foreground.
+    if (state == AppLifecycleState.resumed) {
+      SagaAudio.resumeAmbient();
+      if (paused) resumeEngine();
+    } else {
+      SagaAudio.pauseAmbient();
+      if (!paused) pauseEngine();
+    }
   }
 
   @override
@@ -117,6 +153,8 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
     _lastStepLevel = state.currentLevel;
     _queueStateNotify();
     _queueCameraNotify();
+    await SagaAudio.preload();
+    await SagaAudio.startAmbient();
   }
 
   Future<Image?> _tryLoadImage(String assetPath) async {
@@ -140,6 +178,7 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
     super.update(dt);
     _time += dt;
     _applyInertia(dt);
+    _applyGlide(dt);
     _camera.setTarget(state.progress);
     _camera.update(dt, state.pathPreset);
     _queueCameraNotify();
@@ -148,23 +187,85 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
     if (visualLevel != _lastStepLevel) {
       if (visualLevel > _lastStepLevel) {
         _deferActiveReward();
-        final completedLevel = visualLevel - 1;
-        _fxState = SagaFxState(
-          completedLevel: completedLevel,
-          startedAt: _time,
-          serial: _fxState.serial + 1,
-          comboNumber: _comboNumberFor(completedLevel),
-        );
+        // Arm the celebration for the step we just landed on; it fires below
+        // once THIS step's bars finish filling (green -> blue on this node).
+        _pendingCompletionLevel = visualLevel;
+      } else {
+        _pendingCompletionLevel = null; // moving back cancels a pending one
+        SagaAudio.nodeArrive();
       }
       _lastStepLevel = visualLevel;
       _stepEnteredAt = _time;
+      _barsAwarded = 0; // new step: its bars haven't paid out yet
       state = state.copyWith(currentLevel: visualLevel);
     }
+
+    // Each progress bar that fills flings a couple of stars up to the HUD chip.
+    final fillFrac =
+        ((_time - _stepEnteredAt) / _stepFillDuration).clamp(0.0, 1.0);
+    final fillProgress = fillFrac * fillFrac * (3 - 2 * fillFrac);
+    const barEnds = [0.2, 0.6, 1.0]; // matches the painter's 3 bars + holds
+    var filled = 0;
+    for (final end in barEnds) {
+      if (fillProgress >= end) filled++;
+    }
+    if (filled > _barsAwarded) {
+      // The step's total reward, split across its 3 bars.
+      final total =
+          SagaFxState(completedLevel: state.currentLevel).rewardStarCount;
+      for (var bar = _barsAwarded; bar < filled; bar++) {
+        _spawnBarStars(_barStarShare(bar, total));
+      }
+      _barsAwarded = filled;
+    }
+    _barStars.removeWhere((s) => _time - s.birth > 0.85);
+    // When a burst reaches the chip: credit its stars to the total (which makes
+    // the chip pulse), plus a soft collect sound.
+    while (_barStarLandings.isNotEmpty &&
+        _time >= _barStarLandings.first.time) {
+      final landing = _barStarLandings.removeAt(0);
+      state = state.copyWith(stars: state.stars + landing.stars);
+      SagaAudio.rewardCollect();
+      _bumpStarPulse();
+    }
+
+    // Stars / lightning / combo start only when the step's third progress bar
+    // has filled completely — i.e. once the fill animation reaches its end.
+    if (_pendingCompletionLevel != null &&
+        _time - _stepEnteredAt >= _stepFillDuration) {
+      final completedLevel = _pendingCompletionLevel!;
+      _pendingCompletionLevel = null;
+      _fxState = SagaFxState(
+        completedLevel: completedLevel,
+        startedAt: _time,
+        serial: _fxState.serial + 1,
+        comboNumber: _comboNumberFor(completedLevel),
+      );
+      SagaAudio.nodeComplete();
+      SagaAudio.rewardSpawn();
+      if (_fxState.comboNumber != null) {
+        // ponytail: number-pop fires with the lightning; the clip's own attack
+        // covers the ~0.2s until the number scales in.
+        SagaAudio.comboLightning();
+        SagaAudio.comboNumberPop();
+      }
+      // Special steps: the item's poof drops bonus stars that fly to the chip
+      // and land (credited) ~3.5s in, alongside the poof animation.
+      if (propAt(completedLevel) != null) {
+        _barStarLandings.add((time: _time + 3.5, stars: _propStarBonus));
+      }
+    }
+
+    // Stars are credited per bar as they land; this only credits the step's
+    // energy once its reward flight arrives.
     if (_fxState.isActive &&
         _fxState.ageAt(_time) >= _fxState.rewardArrivalAge) {
       _collectActiveReward();
     }
-    if (_fxState.isActive && _fxState.ageAt(_time) > 3.8) {
+    // Combo finale (lightning after the V + rewards) runs longer than a plain
+    // or item completion, so hold its fx state open longer before clearing.
+    if (_fxState.isActive &&
+        _fxState.ageAt(_time) > (_fxState.hasCombo ? 6.5 : 4.8)) {
       _fxState = SagaFxState(serial: _fxState.serial);
     }
   }
@@ -183,7 +284,7 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
       fogDistance: 3600,
     );
     final visualState = state.copyWith(progress: _camera.visualProgress);
-    final fillT = ((_time - _stepEnteredAt) / 0.95).clamp(0.0, 1.0);
+    final fillT = ((_time - _stepEnteredAt) / _stepFillDuration).clamp(0.0, 1.0);
     final scene = buildSagaScene(
       visualState,
       projector,
@@ -211,6 +312,7 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
       fxState: _fxState,
       starTarget: _starTarget,
       energyTarget: _energyTarget,
+      barStars: _barStars,
     ).paint(canvas, Size(size.x, size.y));
   }
 
@@ -218,6 +320,7 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
   void onDragStart(DragStartEvent event) {
     super.onDragStart(event);
     _inertiaVelocity = 0;
+    _glideFrom = null; // a real drag takes over from any programmatic glide
   }
 
   @override
@@ -254,6 +357,7 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
         final propDy = tap.y - (node.screenY - radius * 0.78);
         final propRadius = (radius * 0.72).clamp(18.0, 44.0);
         if (dx * dx + propDy * propDy <= propRadius * propRadius) {
+          _playNodeTapSound(node.node.index);
           onNodePressed?.call(node.node.index);
           moveToLevel(node.node.index);
           info.handled = true;
@@ -265,11 +369,24 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
       if ((dx * dx) / (hitWidth * hitWidth) +
               (dy * dy) / (hitHeight * hitHeight) <=
           1) {
+        _playNodeTapSound(node.node.index);
         onNodePressed?.call(node.node.index);
         moveToLevel(node.node.index);
         info.handled = true;
         return;
       }
+    }
+  }
+
+  void _playNodeTapSound(int index) {
+    switch (propAt(index)) {
+      case SagaPropKind.chest:
+        SagaAudio.chestOpen();
+      case SagaPropKind.crystal:
+        SagaAudio.crystalShimmer();
+      case SagaPropKind.orb:
+      case null:
+        SagaAudio.nodeSelect();
     }
   }
 
@@ -287,8 +404,30 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
 
   void moveToLevel(int level) {
     _inertiaVelocity = 0;
-    final progress = depth(_clampLevel(level)).toDouble();
-    state = state.copyWith(progress: progress);
+    // Glide progress to the target instead of snapping, so the camera trails a
+    // continuous change exactly like it does during a scroll.
+    final target = depth(_clampLevel(level)).toDouble();
+    final from = state.progress;
+    final distanceLevels = (target - from).abs() / depth(1);
+    if (distanceLevels < 0.001) return;
+    _glideFrom = from;
+    _glideTo = target;
+    _glideElapsed = 0;
+    // Short and snappy so the camera spring — which smooths on top — doesn't
+    // stack into a laggy feel. Ease-out (below) front-loads the motion.
+    _glideDuration = (0.16 + distanceLevels * 0.06).clamp(0.16, 0.5);
+  }
+
+  void _applyGlide(double dt) {
+    final from = _glideFrom;
+    if (from == null) return;
+    _glideElapsed += dt;
+    final t = (_glideElapsed / _glideDuration).clamp(0.0, 1.0);
+    // Ease-out: fast start, gentle settle — responsive like a scroll flick.
+    final eased = 1 - math.pow(1 - t, 3).toDouble();
+    final p = from + (_glideTo - from) * eased;
+    state = state.copyWith(progress: _clampProgress(p));
+    if (t >= 1.0) _glideFrom = null;
   }
 
   void setStepLimit({required int? stepCount}) {
@@ -308,22 +447,54 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
     if (energy != null) _energyTarget = energy;
   }
 
+  // Stars are credited per bar as they land; this only credits energy.
   void _collectActiveReward() {
     if (!_fxState.isActive || _creditedFxSerial == _fxState.serial) return;
     _creditedFxSerial = _fxState.serial;
-    state = state.copyWith(
-      stars: state.stars + _pendingStars + _fxState.rewardStarCount,
-      energy: state.energy + _pendingEnergy + 1,
-    );
-    _pendingStars = 0;
+    state = state.copyWith(energy: state.energy + _pendingEnergy + 1);
     _pendingEnergy = 0;
   }
 
   void _deferActiveReward() {
     if (!_fxState.isActive || _creditedFxSerial == _fxState.serial) return;
     _creditedFxSerial = _fxState.serial;
-    _pendingStars += _fxState.rewardStarCount;
     _pendingEnergy++;
+  }
+
+  // Even split of [total] across 3 bars, remainder going to the later bars.
+  int _barStarShare(int barIndex, int total) =>
+      total ~/ 3 + (barIndex >= 3 - total % 3 ? 1 : 0);
+
+  void _spawnBarStars(int starCount) {
+    // Always schedule the credit, even if the node is briefly off-screen, so
+    // the total can never lose stars to a missing visual.
+    _barStarLandings.add((time: _time + _barStarFlight, stars: starCount));
+    final scene = _latestScene;
+    if (scene == null) return;
+    Offset? from;
+    for (final node in scene.nodes) {
+      if (node.node.index == state.currentLevel) {
+        from = Offset(node.screenX, node.screenY - 30);
+        break;
+      }
+    }
+    final origin = from;
+    if (origin == null) return;
+    for (var s = 0; s < starCount; s++) {
+      _barStars.add((
+        birth: _time,
+        from: origin,
+        seed: stablePhase(_barStars.length * 7 + s),
+      ));
+    }
+  }
+
+  void _bumpStarPulse() {
+    final notifier = starPulseNotifier;
+    if (notifier == null) return;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (_notifiersActive) notifier.value = notifier.value + 1;
+    });
   }
 
   int _clampLevel(int level) {

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../saga_map/domain/saga_map_state.dart';
@@ -10,6 +11,7 @@ class SagaHud extends StatelessWidget {
   const SagaHud({
     super.key,
     required this.stateListenable,
+    required this.starPulse,
     required this.debugVisible,
     required this.onDebugPressed,
     required this.onPresetPressed,
@@ -21,6 +23,7 @@ class SagaHud extends StatelessWidget {
   });
 
   final ValueNotifier<SagaMapState> stateListenable;
+  final ValueListenable<int> starPulse;
   final bool debugVisible;
   final VoidCallback onDebugPressed;
   final VoidCallback onPresetPressed;
@@ -42,6 +45,7 @@ class SagaHud extends StatelessWidget {
               level: state.currentLevel,
               energy: state.energy,
               stars: state.stars,
+              starPulse: starPulse,
               debugVisible: debugVisible,
               onDebugPressed: onDebugPressed,
               onPresetPressed: onPresetPressed,
@@ -99,12 +103,11 @@ class _SideHudButtonsState extends State<_SideHudButtons>
             return Stack(
               children: [
                 _SideHudButton(
-                  left: 46,
+                  left: 22,
                   top: h * 0.34,
                   delay: 0,
                   idleT: _idle.value,
                   idlePhase: 0,
-                  color: const Color(0xFFFFA93A),
                   imageAsset: 'assets/props/saga_book.png',
                   tooltip: 'Books',
                   onPressed: () => widget.onAction(
@@ -114,11 +117,10 @@ class _SideHudButtonsState extends State<_SideHudButtons>
                 ),
                 _SideHudButton(
                   left: 22,
-                  top: h * 0.44,
+                  top: h * 0.46,
                   delay: 80,
                   idleT: _idle.value,
                   idlePhase: 0.18,
-                  color: const Color(0xFF3FC7FF),
                   imageAsset: 'assets/props/snowflake.png',
                   tooltip: 'Snowflake',
                   onPressed: () => widget.onAction(
@@ -127,12 +129,11 @@ class _SideHudButtonsState extends State<_SideHudButtons>
                   ),
                 ),
                 _SideHudButton(
-                  left: 44,
-                  top: h * 0.56,
+                  left: 22,
+                  top: h * 0.58,
                   delay: 160,
                   idleT: _idle.value,
                   idlePhase: 0.36,
-                  color: const Color(0xFFFFC63E),
                   imageAsset: 'assets/props/trophy.png',
                   tooltip: 'Trophy',
                   onPressed: () => widget.onAction(
@@ -141,12 +142,11 @@ class _SideHudButtonsState extends State<_SideHudButtons>
                   ),
                 ),
                 _SideHudButton(
-                  right: 34,
-                  top: h * 0.36,
+                  right: 22,
+                  top: h * 0.34,
                   delay: 60,
                   idleT: _idle.value,
                   idlePhase: 0.54,
-                  color: const Color(0xFFFFC642),
                   imageAsset: 'assets/props/magic_lamp.png',
                   tooltip: 'Lamp',
                   onPressed: () => widget.onAction(
@@ -155,12 +155,11 @@ class _SideHudButtonsState extends State<_SideHudButtons>
                   ),
                 ),
                 _SideHudButton(
-                  right: 28,
-                  top: h * 0.48,
+                  right: 22,
+                  top: h * 0.46,
                   delay: 140,
                   idleT: _idle.value,
                   idlePhase: 0.72,
-                  color: const Color(0xFFFF6DA8),
                   imageAsset: 'assets/props/gift_box.png',
                   tooltip: 'Rewards',
                   onPressed: () => widget.onAction(
@@ -183,7 +182,6 @@ class _SideHudButton extends StatelessWidget {
     this.right,
     required this.top,
     required this.delay,
-    required this.color,
     required this.tooltip,
     required this.imageAsset,
     required this.onPressed,
@@ -195,7 +193,6 @@ class _SideHudButton extends StatelessWidget {
   final double? right;
   final double top;
   final int delay;
-  final Color color;
   final String tooltip;
   final String imageAsset;
   final VoidCallback onPressed;
@@ -204,38 +201,42 @@ class _SideHudButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The item gently rocks + bobs; the square underneath stays perfectly
+    // straight and still.
+    final wave = (idleT + idlePhase) * math.pi * 2;
+    final rock = 0.14 * math.sin(wave);
+    final bob = 2.5 * math.sin(wave + 0.6);
     return Positioned(
       left: left,
       right: right,
       top: top,
-      child: Transform.translate(
-        offset: Offset(0, 2.5 * math.sin((idleT + idlePhase) * math.pi * 2)),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: Duration(milliseconds: 420 + delay),
-          curve: Curves.easeOutBack,
-          builder: (context, t, child) {
-            return Opacity(
-              opacity: t.clamp(0.0, 1.0),
-              child: Transform.translate(
-                offset: Offset((right == null ? -18 : 18) * (1 - t), 0),
-                child: Transform.scale(scale: 0.84 + t * 0.16, child: child),
-              ),
-            );
-          },
-          child: Tooltip(
-            message: tooltip,
-            child: Material(
-              color: color,
-              borderRadius: BorderRadius.circular(12),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: onPressed,
-                child: Container(
-                  width: 48,
-                  height: 48,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: 420 + delay),
+        curve: Curves.easeOutBack,
+        builder: (context, t, child) {
+          return Opacity(
+            opacity: t.clamp(0.0, 1.0),
+            child: Transform.translate(
+              offset: Offset((right == null ? -18 : 18) * (1 - t), 0),
+              child: Transform.scale(scale: 0.84 + t * 0.16, child: child),
+            ),
+          );
+        },
+        child: Tooltip(
+          message: tooltip,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Stack(
+              clipBehavior: Clip.none, // let the item spill out of the square
+              alignment: Alignment.center,
+              children: [
+                Container(
                   decoration: BoxDecoration(
+                    color: const Color(0xFF9DA7AE),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white, width: 2),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x16000000),
@@ -244,11 +245,26 @@ class _SideHudButton extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: Image.asset(imageAsset, width: 45, height: 45),
+                ),
+                // Bigger than the box + tilted, so it overlaps the edges.
+                Transform.translate(
+                  offset: Offset(0, bob),
+                  child: Transform.rotate(
+                    angle: rock,
+                    child: Image.asset(imageAsset, width: 70, height: 70),
                   ),
                 ),
-              ),
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: onPressed,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -262,6 +278,7 @@ class _TopHud extends StatelessWidget {
     required this.level,
     required this.energy,
     required this.stars,
+    required this.starPulse,
     required this.debugVisible,
     required this.onDebugPressed,
     required this.onPresetPressed,
@@ -274,6 +291,7 @@ class _TopHud extends StatelessWidget {
   final int level;
   final int energy;
   final int stars;
+  final ValueListenable<int> starPulse;
   final bool debugVisible;
   final VoidCallback onDebugPressed;
   final VoidCallback onPresetPressed;
@@ -333,17 +351,22 @@ class _TopHud extends StatelessWidget {
                 ),
               ),
               SizedBox(width: gap),
-              _CounterPill(
-                icon: Icons.star_rounded,
-                tooltip: 'Stars',
-                iconColor: Color(0xFFFFC83D),
-                value: '$stars',
-                compact: compact,
-                pulseKey: stars,
-                onCenterChanged: onStarTargetChanged,
-                onPressed: () => onAction(
-                  'Stars',
-                  '$stars stars collected. Reward stars arrive here after each completed step.',
+              // Pulses both when the count changes and when a bar's reward
+              // stars land (starPulse), so it reacts as stars arrive.
+              ValueListenableBuilder<int>(
+                valueListenable: starPulse,
+                builder: (context, pulse, _) => _CounterPill(
+                  icon: Icons.star_rounded,
+                  tooltip: 'Stars',
+                  iconColor: const Color(0xFFFFC83D),
+                  value: '$stars',
+                  compact: compact,
+                  pulseKey: Object.hash(stars, pulse),
+                  onCenterChanged: onStarTargetChanged,
+                  onPressed: () => onAction(
+                    'Stars',
+                    '$stars stars collected. Reward stars arrive here after each completed step.',
+                  ),
                 ),
               ),
               const Spacer(),

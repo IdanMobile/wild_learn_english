@@ -3,9 +3,9 @@ import 'package:learn_english_flutter/saga_map/domain/saga_map_state.dart';
 import 'package:learn_english_flutter/saga_map/world/saga_path.dart';
 
 void main() {
-  test('defaults to the gentle path preset', () {
+  test('defaults to the dramatic path preset', () {
     const state = SagaMapState(progress: 0, currentLevel: 0);
-    expect(state.pathPreset, SagaPathPreset.gentle);
+    expect(state.pathPreset, SagaPathPreset.dramatic);
   });
 
   test('copyWith can change preset without changing movement fields', () {

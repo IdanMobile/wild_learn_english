@@ -36,6 +36,7 @@ class SagaMapPainter extends CustomPainter {
     this.fxState = const SagaFxState(),
     this.starTarget,
     this.energyTarget,
+    this.barStars = const [],
   });
 
   final SagaScene scene;
@@ -57,17 +58,32 @@ class SagaMapPainter extends CustomPainter {
   final SagaFxState fxState;
   final Offset? starTarget;
   final Offset? energyTarget;
+  // Per-bar reward stars in flight: each flies from [from] to the HUD star
+  // chip over [_barStarFlight] seconds starting at [birth] (game time).
+  final List<({double birth, Offset from, double seed})> barStars;
+
+  static const double _barStarFlight = 0.8;
 
   static const double _baseRadius = 54;
   static const Color _completedColor = Color(0xFF21A9F2);
   static const Color _currentColor = Color(0xFF52D64A);
   static const Color _upcomingColor = Color(0xFFD8E2E6);
   static const Color _fogColor = Color(0xFFEFF7FA);
+  // Three bars pinned across the bottom half of the button, laid left -> right
+  // (angle pi = left, pi/2 = bottom, 0 = right; negative sweep runs leftward
+  // to rightward along the bottom). ~0.30 rad gaps between them.
   static const _ringSegments = <({double start, double sweep})>[
-    (start: 2.72, sweep: 0.5),
-    (start: 1.34, sweep: 0.78),
-    (start: -0.08, sweep: 0.54),
+    (start: 3.1416, sweep: -0.8472),
+    (start: 1.9944, sweep: -0.8472),
+    (start: 0.8472, sweep: -0.8472),
   ];
+
+  // Completion sequence timings, all measured from fxState age (bars full):
+  // green->blue, then the V draws, then the item/lightning reward.
+  static const double _checkDrawStart = 0.3;
+  static const double _checkDrawTime = 1.0; // V finishes drawing at ~1.3s
+  static const double _rewardStart = 1.4; // item / plain reward after the V
+  static const double _comboDelay = 1.4; // lightning plays last, after the V
 
   final Paint _shadowPaint = Paint()
     ..style = PaintingStyle.fill
@@ -104,7 +120,9 @@ class SagaMapPainter extends CustomPainter {
     _paintPathProps(canvas);
     _paintForegroundMist(canvas, size);
     _paintRewardStars(canvas, size);
+    _paintBarStars(canvas, size);
     _paintEnergyReward(canvas, size);
+    _paintItemReward(canvas, size);
     _paintLightningCombo(canvas, size);
   }
 
@@ -112,32 +130,41 @@ class SagaMapPainter extends CustomPainter {
     final rect = Offset.zero & size;
     final sky = skyImage;
     if (sky != null) {
-      _drawImageCover(canvas, sky, rect, opacity: 0.28);
+      _drawImageCover(canvas, sky, rect, opacity: 0.6);
     }
+    // Thinner wash so the sky reads through instead of being buried under it.
     final paint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xDFFFFFFF), Color(0xDFF7FCFF), Color(0xD8ECF8FC)],
+        colors: [Color(0x9EFFFFFF), Color(0x9EF7FCFF), Color(0x94ECF8FC)],
       ).createShader(rect);
     canvas.drawRect(rect, paint);
 
     final mountains = mountainsImage;
     if (mountains != null) {
-      final anchor = _projectDistantAnchor(size, _castleIndex + 8);
-      final drift = anchor == null ? 0.0 : anchor.dx - size.width * 0.5;
-      final opacity = (0.24 + _mapCompletion * 0.46).clamp(0.24, 0.7);
-      _drawImageFitWidth(
-        canvas,
-        mountains,
-        Rect.fromLTWH(
-          -size.width * 0.16 + drift * 0.22,
-          size.height * 0.1,
-          size.width * 1.32,
-          size.height * 0.22,
-        ),
-        opacity: opacity,
-      );
+      // Anchor the range far behind the castle (larger index = farther world
+      // point). Because it is farther, the projector naturally gives it a
+      // smaller, subtler parallax in both x and y than the castle — and being
+      // deeper in the scene it always renders behind it.
+      final anchor = _projectDistantAnchor(size, _castleWorldIndex + 20);
+      if (anchor != null) {
+        final opacity = (0.24 + _mapCompletion * 0.46).clamp(0.24, 0.7);
+        final width = size.width * 1.4;
+        final left = size.width * 0.5 - width * 0.5 + (anchor.dx - size.width * 0.5);
+        final bottom = anchor.dy + size.height * 0.12;
+        _drawImageFitWidth(
+          canvas,
+          mountains,
+          Rect.fromLTWH(
+            left,
+            bottom - size.height * 0.22,
+            width,
+            size.height * 0.22,
+          ),
+          opacity: opacity,
+        );
+      }
     }
 
     final haze = hazeImage;
@@ -161,7 +188,7 @@ class SagaMapPainter extends CustomPainter {
 
     final haze = hazeImage;
     if (haze != null) {
-      final farAnchor = _projectDistantAnchor(size, _castleIndex + 4);
+      final farAnchor = _projectDistantAnchor(size, _castleWorldIndex + 4);
       final drift = farAnchor == null ? 0.0 : farAnchor.dx - size.width * 0.5;
       final ambientDrift = math.sin(animationTime * 0.12) * size.width * 0.025;
       _drawImageCover(
@@ -220,8 +247,11 @@ class SagaMapPainter extends CustomPainter {
       size.width * 0.36,
     );
     final height = width * image.height / image.width;
+    // The path converges to the horizon line; anchor the castle's door
+    // (~0.86 down the image) there so the road leads straight into it, rather
+    // than to anchor.dy which sits below the horizon and leaves the path high.
     final dst = Rect.fromCenter(
-      center: Offset(anchor.dx, anchor.dy - height * 0.28),
+      center: Offset(anchor.dx, scene.projector.horizonY - height * 0.36),
       width: width,
       height: height,
     );
@@ -254,10 +284,13 @@ class SagaMapPainter extends CustomPainter {
     }
   }
 
-  int get _castleIndex {
+  // Continuous (fractional) world index for the far scenery. In endless mode it
+  // tracks the camera smoothly at a fixed distance ahead — using the integer
+  // levelForProgress here made the castle snap forward one whole step per level.
+  double get _castleWorldIndex {
     final maxLevel = scene.maxLevel;
-    if (maxLevel != null) return maxLevel + 1;
-    return saga_path.levelForProgress(scene.cameraProgress) + 30;
+    if (maxLevel != null) return (maxLevel + 1).toDouble();
+    return scene.cameraProgress / saga_path.depth(1) + 30;
   }
 
   double get _mapCompletion {
@@ -266,16 +299,19 @@ class SagaMapPainter extends CustomPainter {
     return (scene.cameraProgress / saga_path.depth(maxLevel)).clamp(0.0, 1.0);
   }
 
+  // Projects a continuous world index (may be fractional) so far scenery glides
+  // rather than snapping between whole node positions.
   ({double dx, double dy, double scale})? _projectDistantAnchor(
     Size size,
-    int index,
+    double worldIndex,
   ) {
-    final relativeDepth = saga_path.depth(index) - scene.cameraProgress;
+    final worldDepth = saga_path.depth(1) * worldIndex;
+    final relativeDepth = worldDepth - scene.cameraProgress;
     final denom = scene.projector.focalLength + relativeDepth;
     if (denom <= 0) return null;
 
     final scale = scene.projector.focalLength / denom;
-    final worldX = saga_path.x(index, preset: scene.pathPreset);
+    final worldX = _pathXAt(worldIndex);
     final yawedX =
         worldX -
         scene.projector.cameraX -
@@ -289,30 +325,55 @@ class SagaMapPainter extends CustomPainter {
     return (dx: dx, dy: dy, scale: scale);
   }
 
+  // Path x at a fractional index, linearly interpolated between node samples.
+  double _pathXAt(double worldIndex) {
+    final lo = worldIndex.floor();
+    final frac = worldIndex - lo;
+    final a = saga_path.x(lo, preset: scene.pathPreset);
+    final b = saga_path.x(lo + 1, preset: scene.pathPreset);
+    return a + (b - a) * frac;
+  }
+
   ({double dx, double dy, double scale})? _castleDoorAnchor(Size size) =>
-      _projectDistantAnchor(size, _castleIndex);
+      _projectDistantAnchor(size, _castleWorldIndex);
 
   void _paintNode(Canvas canvas, ProjectedNode projected) {
-    final completionT = _completionTFor(projected.node.index);
-    final base = _baseColorFor(projected.node.state);
+    final index = projected.node.index;
+    final state = projected.node.state;
+    // The node whose bars just filled celebrates in place: it turns blue and
+    // draws its V even while still the "current" node, until the camera moves.
+    final celebrating = fxState.isActive && fxState.completedLevel == index;
+    final age = celebrating ? fxState.ageAt(animationTime) : -1.0;
+    // A current node stays "completed" (blue + V) once its bars are full, even
+    // after the transient fx clears — so it never reverts to filling bars.
+    final barsFull =
+        state == SagaNodeState.current && scene.stepFillProgress >= 1.0;
+    final isCompleting =
+        (celebrating || barsFull) && state != SagaNodeState.upcoming;
+    final isFilling = state == SagaNodeState.current && !isCompleting;
+
+    final completionT = _completionTFor(index);
+    final settledColor = isCompleting || state == SagaNodeState.completed
+        ? _completedColor
+        : _baseColorFor(state);
     final completedFlash = Color.lerp(
       _currentColor,
       const Color(0xFFFFE67A),
       math.sin(completionT * math.pi).clamp(0.0, 1.0),
     )!;
     final animatedBase = completionT > 0
-        ? Color.lerp(completedFlash, _completedColor, completionT)!
-        : base;
+        ? Color.lerp(completedFlash, settledColor, completionT)!
+        : settledColor;
     final topColor =
         Color.lerp(animatedBase, _fogColor, projected.fogFactor) ??
         animatedBase;
-    final arrivalPulse = projected.node.state == SagaNodeState.current
+    final arrivalPulse = isFilling
         ? _arrivalPulse(scene.stepFillProgress)
         : 1.0;
     final completePulse = completionT > 0
         ? 1 + math.sin(completionT * math.pi) * 0.14
         : 1.0;
-    final activePulse = projected.node.state == SagaNodeState.current
+    final activePulse = state == SagaNodeState.current
         ? 1.02 + math.sin(animationTime * 5.5) * 0.018
         : 1.0;
     final radius =
@@ -330,11 +391,6 @@ class SagaMapPainter extends CustomPainter {
     final heading = math.atan2(frame.tangentX, frame.tangentDepth) * 0.16;
     final topWidth = radius * 1.72;
     final topHeight = topWidth * projected.platformAspect;
-    final side = Rect.fromCenter(
-      center: Offset.zero + Offset(0, topHeight * 0.32),
-      width: radius * 1.9,
-      height: topHeight * 1.16,
-    );
     final top = Rect.fromCenter(
       center: Offset.zero,
       width: topWidth,
@@ -342,34 +398,30 @@ class SagaMapPainter extends CustomPainter {
     );
 
     canvas.save();
-    canvas.translate(center.dx, center.dy - radius * 0.18);
+    canvas.translate(center.dx, center.dy - radius * 0.04);
     canvas.rotate(heading);
-    _paintDisc(canvas, side, top, topColor, projected.node.state);
+    _paintDisc(canvas, top, topColor, projected.node.state);
     canvas.restore();
 
-    if (projected.node.state == SagaNodeState.current || completionT > 0) {
-      _paintNodeGlow(canvas, center - Offset(0, radius * 0.18), radius);
+    final anchor = center - Offset(0, radius * 0.04);
+    if (state == SagaNodeState.current || completionT > 0) {
+      _paintNodeGlow(canvas, anchor, radius);
     }
 
-    if (projected.node.state == SagaNodeState.current) {
+    if (isFilling) {
       _paintProgressArcs(
         canvas,
-        center - Offset(0, radius * 0.18),
+        anchor,
         radius,
         projected.platformAspect,
         scene.stepFillProgress,
       );
-    } else if (projected.node.state == SagaNodeState.completed) {
-      final iconT = completionT > 0
-          ? easeOutBack(((completionT - 0.24) / 0.76).clamp(0.0, 1.0))
+    } else if (isCompleting || state == SagaNodeState.completed) {
+      // Fresh completion: the V draws on progressively. Old ones show it whole.
+      final drawT = celebrating
+          ? ((age - _checkDrawStart) / _checkDrawTime).clamp(0.0, 1.0)
           : 1.0;
-      _paintIcon(
-        canvas,
-        Icons.check_rounded,
-        center - Offset(0, radius * (0.18 + (1 - iconT) * 0.1)),
-        radius * (0.48 + math.sin(animationTime * 2.6) * 0.015) * iconT,
-        Colors.white.withValues(alpha: 0.78 * iconT.clamp(0.0, 1.0)),
-      );
+      _paintAnimatedCheck(canvas, anchor, radius * 0.5, drawT);
     }
   }
 
@@ -425,6 +477,15 @@ class SagaMapPainter extends CustomPainter {
         null => null,
       };
       if (image == null) continue;
+      // A prop is collected once its step is done — gone on completed steps and
+      // on the current step the moment its bars fill. From there the item
+      // reward (rise + poof) owns drawing it; it is never shown in place again.
+      final propState = target.node.state;
+      if (propState == SagaNodeState.completed ||
+          (propState == SagaNodeState.current &&
+              scene.stepFillProgress >= 1.0)) {
+        continue;
+      }
       final radius = (_baseRadius * target.scale).clamp(12.0, 44.0);
       final phase = stablePhase(target.node.index) * math.pi * 2;
       final bob = math.sin(animationTime * 2.4 + phase) * 4;
@@ -462,7 +523,7 @@ class SagaMapPainter extends CustomPainter {
     double aspect,
     double fillProgress,
   ) {
-    final rotation = animationTime * 0.45;
+    const rotation = 0.0; // pinned to the bottom, no spin
     final pulse = 0.92 + math.sin(animationTime * 4.5) * 0.05;
     final width = radius * 2.42 * pulse;
     final rect = Rect.fromCenter(
@@ -472,12 +533,12 @@ class SagaMapPainter extends CustomPainter {
     );
     final trackPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
+      ..strokeWidth = 10
       ..strokeCap = StrokeCap.round
       ..color = const Color(0xFFBFC9CD);
     final fillPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
+      ..strokeWidth = 10
       ..strokeCap = StrokeCap.round
       ..color = const Color(0xFF21C94D);
     for (final segment in _ringSegments) {
@@ -506,60 +567,17 @@ class SagaMapPainter extends CustomPainter {
   void _paintRewardStars(Canvas canvas, Size size) {
     final completedLevel = fxState.completedLevel;
     if (completedLevel == null || fxState.rewardStarCount == 0) return;
-
-    if (fxState.hasCombo) {
-      _paintHeroRewardStar(canvas, size);
-      return;
-    }
-
-    ProjectedNode? source;
-    for (final node in scene.nodes) {
-      if (node.node.index == completedLevel) {
-        source = node;
-        break;
-      }
-    }
-    if (source == null) return;
-
-    final start = Offset(source.screenX, source.screenY - 36 * source.scale);
-    final end = starTarget ?? _fallbackStarChipCenter(size);
-    final t = fxState.rewardT(animationTime);
-    if (t <= 0 || t >= 1) return;
-
-    final count = fxState.rewardStarCount;
-    for (var i = 0; i < count; i++) {
-      final seed = stablePhase(completedLevel * 31 + i);
-      final delay = i * 0.045;
-      final localT = smooth01(((t - delay) / (1 - delay)).clamp(0.0, 1.0));
-      if (localT <= 0) continue;
-      final angle = -math.pi * (0.18 + seed * 0.64);
-      final burst = Offset(math.cos(angle), math.sin(angle)) * (34 + seed * 20);
-      final control = start + burst + Offset((seed - 0.5) * 120, -92);
-      final p = _quadratic(start + burst * (1 - localT), control, end, localT);
-      final scale = (1.1 - localT * 0.42) * (0.78 + seed * 0.24);
-      _paintStar(
-        canvas,
-        p,
-        8.5 * scale,
-        animationTime * 6 + seed * math.pi * 2,
-        (1 - localT * 0.35).clamp(0.0, 1.0),
-      );
-      if (i.isEven) {
-        _paintSparkle(
-          canvas,
-          _quadratic(start, control, end, (localT - 0.08).clamp(0.0, 1.0)),
-          2.5 * scale,
-          0.38 * (1 - localT),
-        );
-      }
-    }
+    // Plain/item steps reward via the per-bar stars (fill) and the item poof;
+    // only the combo finale still flies a hero star to the HUD from here.
+    if (fxState.hasCombo) _paintHeroRewardStar(canvas, size);
   }
 
   void _paintHeroRewardStar(Canvas canvas, Size size) {
-    final age = fxState.ageAt(animationTime);
-    if (age < 1.45 || age > 3.15) return;
+    // Combo finale runs after the V (see _comboDelay): shift its window out.
+    final age = fxState.ageAt(animationTime) - _comboDelay;
+    if (age < 2.4 || age > 4.2) return;
 
-    final t = smooth01(((age - 1.45) / 1.7).clamp(0.0, 1.0));
+    final t = smooth01(((age - 2.4) / 1.8).clamp(0.0, 1.0));
     final start = Offset(size.width * 0.5, size.height * 0.34);
     final end = starTarget ?? _fallbackStarChipCenter(size);
     final control = Offset(size.width * 0.38, size.height * 0.04);
@@ -579,12 +597,141 @@ class SagaMapPainter extends CustomPainter {
     return Offset(compact ? 163 : 186, compact ? 50 : 52);
   }
 
+  // Item finale: the step's prop rises to screen centre while growing, then
+  // poofs into smoke with stars bursting out. Only runs on steps with a prop.
+  void _paintItemReward(Canvas canvas, Size size) {
+    final level = fxState.completedLevel;
+    if (level == null) return;
+    final kind = saga_path.propAt(level);
+    if (kind == null) return;
+    final image = switch (kind) {
+      saga_path.SagaPropKind.chest => chestImage,
+      saga_path.SagaPropKind.orb => orbImage,
+      saga_path.SagaPropKind.crystal => crystalImage,
+    };
+    if (image == null) return;
+
+    final age = fxState.ageAt(animationTime);
+    const riseEnd = 2.6;
+    const poofEnd = 3.5;
+    if (age < 0 || age > poofEnd) return;
+
+    ProjectedNode? src;
+    for (final node in scene.nodes) {
+      if (node.node.index == level) {
+        src = node;
+        break;
+      }
+    }
+    final radius = src == null
+        ? 24.0
+        : (_baseRadius * src.scale).clamp(12.0, 44.0);
+    final from = src == null
+        ? Offset(size.width * 0.5, size.height * 0.62)
+        : Offset(src.screenX, src.screenY - radius * 0.78);
+    final onNodeWidth = radius * 1.1;
+
+    // While the V draws, the item rests on the node (the in-place prop is now
+    // hidden), so there is no gap before it lifts off.
+    if (age < _rewardStart) {
+      final bob = math.sin(animationTime * 2.4) * 3;
+      _drawImageContain(
+        canvas,
+        image,
+        Rect.fromCenter(
+          center: from + Offset(0, bob),
+          width: onNodeWidth,
+          height: onNodeWidth * image.height / image.width,
+        ),
+      );
+      return;
+    }
+
+    final target = Offset(size.width * 0.5, size.height * 0.4);
+    final riseT = smooth01(
+      ((age - _rewardStart) / (riseEnd - _rewardStart)).clamp(0.0, 1.0),
+    );
+    final centre = Offset.lerp(from, target, riseT)!;
+    final width = ui.lerpDouble(onNodeWidth, size.width * 0.26, riseT)!;
+    final itemOpacity = age < riseEnd
+        ? 1.0
+        : (1 - (age - riseEnd) / 0.25).clamp(0.0, 1.0);
+
+    if (itemOpacity > 0) {
+      _drawImageContain(
+        canvas,
+        image,
+        Rect.fromCenter(
+          center: centre,
+          width: width,
+          height: width * image.height / image.width,
+        ),
+        opacity: itemOpacity,
+      );
+    }
+
+    if (age >= riseEnd) {
+      final poofT = ((age - riseEnd) / (poofEnd - riseEnd)).clamp(0.0, 1.0);
+      _paintPoof(canvas, target, size.width * 0.16, poofT);
+      // Bonus stars from the poof fly up into the counter (credited by the game
+      // as _propStarBonus extra stars — keep this count in sync with it).
+      final chip = starTarget ?? _fallbackStarChipCenter(size);
+      final flyT = smooth01(poofT);
+      for (var i = 0; i < 10; i++) {
+        final seed = stablePhase(level * 3 + i);
+        final ang = i / 10 * math.pi * 2 + seed;
+        final burst =
+            target + Offset(math.cos(ang), math.sin(ang)) * size.width * 0.09;
+        final control = Offset(
+          (burst.dx + chip.dx) * 0.5,
+          math.min(burst.dy, chip.dy) - size.height * 0.12,
+        );
+        final p = _quadratic(burst, control, chip, flyT);
+        final opacity = 1 - ((flyT - 0.82) / 0.18).clamp(0.0, 1.0);
+        _paintStar(
+          canvas,
+          p,
+          size.width * 0.022 * (1 - flyT * 0.5),
+          animationTime * 6 + seed * math.pi * 2,
+          opacity,
+        );
+      }
+    }
+  }
+
+  // Procedural "poof": a ring of soft grey puffs expanding + fading, no asset.
+  void _paintPoof(Canvas canvas, Offset center, double baseRadius, double t) {
+    const count = 6;
+    for (var i = 0; i < count; i++) {
+      final seed = stablePhase(i * 29 + 3);
+      final ang = i / count * math.pi * 2;
+      final off =
+          Offset(math.cos(ang), math.sin(ang)) * baseRadius * (0.4 + t * 1.1);
+      final r = baseRadius * (0.5 + seed * 0.5) * (0.6 + t * 1.2);
+      final op = ((1 - t) * 0.5 * (0.7 + seed * 0.3)).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        center + off,
+        r,
+        Paint()
+          ..color = const Color(0xFFEDF2F5).withValues(alpha: op)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+      );
+    }
+    canvas.drawCircle(
+      center,
+      baseRadius * (0.6 + t * 0.8),
+      Paint()
+        ..color = Colors.white.withValues(alpha: (1 - t) * 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
+    );
+  }
+
   void _paintEnergyReward(Canvas canvas, Size size) {
     final completedLevel = fxState.completedLevel;
     if (completedLevel == null) return;
     final age = fxState.ageAt(animationTime);
-    final startAge = fxState.hasCombo ? 1.55 : 0.28;
-    final duration = fxState.hasCombo ? 1.5 : 0.78;
+    final startAge = fxState.hasCombo ? 2.5 + _comboDelay : 0.28;
+    final duration = fxState.hasCombo ? 1.6 : 0.78;
     if (age <= startAge || age >= startAge + duration) return;
 
     ProjectedNode? source;
@@ -647,62 +794,54 @@ class SagaMapPainter extends CustomPainter {
     final comboNumber = fxState.comboNumber;
     if (comboNumber == null) return;
 
-    final age = fxState.ageAt(animationTime);
-    if (age < 0 || age > 3.8) return;
+    // Lightning is the last beat: it starts after the V has drawn (_comboDelay)
+    // and needs no smoke. Number + sparkles inherit this shifted age.
+    final age = fxState.ageAt(animationTime) - _comboDelay;
+    if (age < 0 || age > 4.8) return;
 
-    final glow = softGlowImage;
-    if (glow != null) {
-      final glowT = age < 2.0 ? 1.0 : (1 - (age - 2.0) / 1.8).clamp(0.0, 1.0);
-      _drawImageContain(
-        canvas,
-        glow,
-        Rect.fromCenter(
-          center: Offset(size.width * 0.52, size.height * 0.35),
-          width: size.width * 1.08,
-          height: size.width * 0.72,
-        ),
-        opacity: 0.48 * glowT,
+    // A brief full-screen flash as the bolt strikes (the world lighting up),
+    // instead of a glowing disc behind it.
+    final flashT = (1 - age / 0.45).clamp(0.0, 1.0);
+    if (flashT > 0) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()..color = Colors.white.withValues(alpha: 0.3 * flashT),
       );
     }
 
-    if (age <= 1.45 && lightningComboFrames.isNotEmpty) {
+    if (age <= 2.6 && lightningComboFrames.isNotEmpty) {
       final peakIndex = math.min(4, lightningComboFrames.length - 1);
-      final frame = age < 0.74
-          ? lightningComboFrames[fxState.lightningFrameIndex(
-              animationTime,
-              lightningComboFrames.length,
-            )]
+      // Fast crackle through the frames early, then settle on the peak frame.
+      final frame = age < 0.9
+          ? lightningComboFrames[(age / 0.06).floor() %
+              lightningComboFrames.length]
           : lightningComboFrames[peakIndex];
-      final sweepT = smooth01((age / 1.02).clamp(0.0, 1.0));
-      final holdT = ((age - 0.74) / 0.71).clamp(0.0, 1.0);
-      final center =
-          Offset.lerp(
-            Offset(size.width * 0.88, size.height * 0.18),
-            Offset(size.width * 0.46, size.height * 0.39),
-            sweepT,
-          ) ??
-          Offset(size.width * 0.5, size.height * 0.35);
-      final height =
-          size.height *
-          (0.52 + sweepT * 0.13 + math.sin(holdT * math.pi) * 0.05);
-      final width = height * frame.width / frame.height;
+      // Full-screen and overscanned so the sprite's rectangular bounds sit off
+      // screen — no visible box around the bolt.
+      final width = size.width * 1.18;
+      final height = width * frame.height / frame.width;
+      final center = Offset(size.width * 0.5, size.height * 0.42);
+      // High-frequency opacity flicker reads as crackling electricity and hides
+      // the choppiness of only having a few sprite frames.
+      final flicker = 0.7 + 0.3 * (0.5 + 0.5 * math.sin(age * 46));
+      final fade = age < 2.0
+          ? 1.0
+          : (1 - (age - 2.0) / 0.6).clamp(0.0, 1.0);
       canvas.save();
       canvas.translate(center.dx, center.dy);
-      canvas.rotate(-0.1 + math.sin(age * 10) * 0.012);
+      canvas.rotate(math.sin(age * 13) * 0.01);
       _drawImageContain(
         canvas,
         frame,
         Rect.fromCenter(center: Offset.zero, width: width, height: height),
-        opacity: age < 1.1
-            ? 1
-            : (1 - (age - 1.1).clamp(0.0, 0.35) / 0.35).clamp(0.0, 1.0),
+        opacity: fade * flicker,
       );
       canvas.restore();
     }
 
     final residual = lightningResidualImage;
-    if (residual != null && age >= 0.65 && age <= 2.4) {
-      final t = ((age - 0.65) / 1.75).clamp(0.0, 1.0);
+    if (residual != null && age >= 0.9 && age <= 3.4) {
+      final t = ((age - 0.9) / 2.5).clamp(0.0, 1.0);
       final center =
           Offset.lerp(
             Offset(size.width * 0.55, size.height * 0.43),
@@ -729,9 +868,9 @@ class SagaMapPainter extends CustomPainter {
   }
 
   void _paintComboNumber(Canvas canvas, Size size, int number, double age) {
-    if (age < 0.32 || age > 2.25) return;
-    final enter = easeOutBack(((age - 0.32) / 0.42).clamp(0.0, 1.0));
-    final exit = age < 1.75 ? 1.0 : (1 - (age - 1.75) / 0.5).clamp(0.0, 1.0);
+    if (age < 0.4 || age > 3.0) return;
+    final enter = easeOutBack(((age - 0.4) / 0.5).clamp(0.0, 1.0));
+    final exit = age < 2.4 ? 1.0 : (1 - (age - 2.4) / 0.6).clamp(0.0, 1.0);
     final scale = (0.58 + enter * 0.56 + math.sin(age * 7) * 0.015) * exit;
     final opacity = exit.clamp(0.0, 1.0);
     final fontSize = size.width * 0.18 * scale;
@@ -774,8 +913,8 @@ class SagaMapPainter extends CustomPainter {
   }
 
   void _paintComboSparkles(Canvas canvas, Size size, double age) {
-    if (age < 0.44 || age > 3.0) return;
-    final life = (1 - ((age - 0.44) / 2.56)).clamp(0.0, 1.0);
+    if (age < 0.5 || age > 4.0) return;
+    final life = (1 - ((age - 0.5) / 3.5)).clamp(0.0, 1.0);
     for (var i = 0; i < 16; i++) {
       final seed = stablePhase(900 + i * 17);
       final drift = Offset((seed - 0.5) * 260, -20 - seed * 145) * (1 - life);
@@ -893,22 +1032,55 @@ class SagaMapPainter extends CustomPainter {
   }
 
   double _segmentProgress(double fillProgress, int index) {
-    final start = index / _ringSegments.length;
-    final end = (index + 1) / _ringSegments.length;
-    final t = ((fillProgress - start) / (end - start)).clamp(0.0, 1.0);
+    // Each bar fills within its own window, separated by a small hold so the
+    // three read as distinct steps with a beat between them (not one sweep).
+    const hold = 0.2;
+    final fillEach =
+        (1 - hold * (_ringSegments.length - 1)) / _ringSegments.length;
+    final start = index * (fillEach + hold);
+    final t = ((fillProgress - start) / fillEach).clamp(0.0, 1.0);
     return t * t * (3 - 2 * t);
   }
 
   void _paintDisc(
     Canvas canvas,
-    Rect side,
     Rect top,
     Color color,
     SagaNodeState state,
   ) {
-    canvas.drawOval(side.shift(Offset(0, side.height * 0.25)), _shadowPaint);
-    final sideColor = Color.lerp(color, const Color(0xFF7E9AA6), 0.35)!;
-    canvas.drawOval(side, Paint()..color = sideColor.withValues(alpha: 0.78));
+    // One extruded puck: a bottom ellipse joined to the top face by a solid
+    // side wall, so top + side read as a single floating step button rather
+    // than two stacked discs.
+    final depth = top.height * 0.24;
+    final halfW = top.width / 2;
+    final bottom = top.shift(Offset(0, depth));
+
+    // Contact shadow on the ground below the button.
+    canvas.drawOval(bottom.shift(Offset(0, top.height * 0.1)), _shadowPaint);
+
+    // Side wall: down the left edge, around the front (bottom) half of the
+    // bottom ellipse, up the right edge, closed across the top (hidden by the
+    // top face).
+    final body = Path()
+      ..moveTo(top.center.dx - halfW, top.center.dy)
+      ..lineTo(bottom.center.dx - halfW, bottom.center.dy)
+      ..arcTo(bottom, math.pi, -math.pi, false)
+      ..lineTo(top.center.dx + halfW, top.center.dy)
+      ..close();
+    canvas.drawPath(
+      body,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.lerp(color, const Color(0xFF7E9AA6), 0.28)!,
+            Color.lerp(color, Colors.black, 0.32)!,
+          ],
+        ).createShader(body.getBounds()),
+    );
+
+    // Raised top face.
     canvas.drawOval(
       top,
       Paint()
@@ -937,29 +1109,55 @@ class SagaMapPainter extends CustomPainter {
     );
   }
 
-  void _paintIcon(
+  // A checkmark that draws stroke-by-stroke as [drawT] goes 0 -> 1.
+  void _paintAnimatedCheck(
     Canvas canvas,
-    IconData icon,
     Offset center,
     double size,
-    Color color,
+    double drawT,
   ) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(
-          fontSize: size,
-          fontFamily: icon.fontFamily,
-          package: icon.fontPackage,
-          color: color,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    painter.paint(
-      canvas,
-      center - Offset(painter.width / 2, painter.height / 2),
+    if (drawT <= 0) return;
+    final path = Path()
+      ..moveTo(center.dx - size * 0.5, center.dy + size * 0.04)
+      ..lineTo(center.dx - size * 0.12, center.dy + size * 0.42)
+      ..lineTo(center.dx + size * 0.56, center.dy - size * 0.44);
+    final metric = path.computeMetrics().first;
+    final shown = metric.extractPath(0, metric.length * drawT.clamp(0.0, 1.0));
+    canvas.drawPath(
+      shown,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size * 0.26
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = Colors.white.withValues(alpha: 0.95),
     );
+  }
+
+  // Per-bar reward stars: each spawned star flies from the step up to the HUD
+  // star chip on a gentle arc over a fixed real-time duration (independent of
+  // fill/camera speed), matching the normal reward-star flight.
+  void _paintBarStars(Canvas canvas, Size size) {
+    if (barStars.isEmpty) return;
+    final target = starTarget ?? _fallbackStarChipCenter(size);
+    for (final star in barStars) {
+      final t = (animationTime - star.birth) / _barStarFlight;
+      if (t <= 0 || t >= 1) continue;
+      final e = smooth01(t);
+      final spread = (star.seed - 0.5) * 90;
+      final control = Offset(
+        (star.from.dx + target.dx) * 0.5 + spread,
+        math.min(star.from.dy, target.dy) - 90 - star.seed * 60,
+      );
+      final p = _quadratic(star.from, control, target, e);
+      _paintStar(
+        canvas,
+        p,
+        (11 - e * 5) * (0.8 + star.seed * 0.3),
+        animationTime * 6 + star.seed * math.pi * 2,
+        (1 - ((e - 0.85) / 0.15).clamp(0.0, 1.0)),
+      );
+    }
   }
 
   void _drawImageCover(

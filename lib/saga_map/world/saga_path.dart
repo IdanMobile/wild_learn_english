@@ -10,7 +10,7 @@ import '../domain/saga_node_state.dart';
 /// [nodeAt] twice with the same arguments always yields an identical node.
 const double _amplitude = 80;
 const double _frequency = 0.6;
-const int _depthSpacing = 140;
+const int _depthSpacing = 230;
 
 enum SagaPathPreset { gentle, dramatic }
 

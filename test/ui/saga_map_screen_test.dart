@@ -5,6 +5,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learn_english_flutter/app/saga_app.dart';
+import 'package:learn_english_flutter/saga_map/rendering/saga_fx.dart';
 import 'package:learn_english_flutter/saga_map/saga_map_game.dart';
 
 void main() {
@@ -37,7 +38,7 @@ void main() {
     expect(game.state.currentLevel, greaterThan(0));
   });
 
-  testWidgets('tapping the current node opens its interaction panel', (
+  testWidgets('tapping a node navigates without opening a panel', (
     tester,
   ) async {
     await tester.pumpWidget(const SagaApp());
@@ -60,8 +61,8 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Saga step 1'), findsOneWidget);
-    expect(find.textContaining('current lesson'), findsOneWidget);
+    // A step tap now just navigates — no bottom-sheet panel appears.
+    expect(find.text('Saga step 1'), findsNothing);
   });
 
   testWidgets('HUD reward count changes only after collection arrival', (
@@ -72,17 +73,26 @@ void main() {
 
     final gameFinder = find.byType(GameWidget<SagaMapGame>);
     final game = tester.widget<GameWidget<SagaMapGame>>(gameFinder).game!;
+    game.setCameraTuning(response: 14); // deterministic, snappy activation
     expect(find.text('39'), findsOneWidget);
 
+    // Land on step 1; its bars are still filling, so the count holds at 39.
     game.moveToLevel(1);
-    game.update(1 / 15);
+    for (var i = 0; i < 20; i++) {
+      game.update(1 / 60);
+    }
     await tester.pump();
     expect(find.text('39'), findsOneWidget);
 
-    game.update(1.2);
+    // Bars fill; each bar's stars fly to the chip and credit as they land.
+    for (var i = 0; i < 240; i++) {
+      game.update(1 / 60);
+    }
     await tester.pump();
     await tester.pump();
-    expect(find.text('42'), findsOneWidget);
+    final expected =
+        '${39 + const SagaFxState(completedLevel: 1).rewardStarCount}';
+    expect(find.text(expected), findsOneWidget);
   });
 }
 

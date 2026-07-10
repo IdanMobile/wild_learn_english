@@ -17,6 +17,7 @@ void main() {
         home: Scaffold(
           body: SagaHud(
             stateListenable: state,
+            starPulse: ValueNotifier(0),
             debugVisible: false,
             onDebugPressed: () {},
             onPresetPressed: () {},
@@ -67,6 +68,7 @@ void main() {
         home: Scaffold(
           body: SagaHud(
             stateListenable: state,
+            starPulse: ValueNotifier(0),
             debugVisible: false,
             onDebugPressed: () => debugChanges++,
             onPresetPressed: () => presetChanges++,

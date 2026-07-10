@@ -10,7 +10,9 @@ import 'package:learn_english_flutter/saga_map/world/saga_path.dart';
 void main() {
   group('SagaMapGame drag movement', () {
     test('keeps progress absolute and non-negative through drag updates', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       game.applyDragDelta(1000);
       final forwardProgress = game.state.progress;
@@ -22,7 +24,9 @@ void main() {
     });
 
     test('derives currentLevel from animated camera progress', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       for (final deltaY in <double>[1000, 56000, 281000, -112000, 70000]) {
         game.applyDragDelta(deltaY);
@@ -48,35 +52,52 @@ void main() {
       );
     });
 
-    test('activates the next step before camera fully reaches it', () {
-      final game = SagaMapGame();
+    test('glides to the next step and activates it', () {
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
+      // moveToLevel now glides progress over time, so pump until it settles.
       game.moveToLevel(1);
-      game.update(1 / 15);
+      for (var i = 0; i < 40; i++) {
+        game.update(1 / 60);
+      }
 
       expect(game.state.currentLevel, 1);
       expect(game.state.progress, depth(1).toDouble());
     });
 
     test('defaults to 100 finite steps', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       game.moveToLevel(1000);
+      for (var i = 0; i < 60; i++) {
+        game.update(1 / 60);
+      }
 
       expect(game.state.progress, depth(99).toDouble());
     });
 
     test('can switch to endless steps for testing', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       game.setStepLimit(stepCount: null);
       game.moveToLevel(1000);
+      for (var i = 0; i < 60; i++) {
+        game.update(1 / 60);
+      }
 
       expect(game.state.progress, depth(1000).toDouble());
     });
 
     test('release inertia advances progress through the same state source', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       game.onDragEnd(
         DragEndEvent(
@@ -108,16 +129,18 @@ void main() {
     });
 
     test('credits reward once when its flight reaches the HUD', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       game.moveToLevel(1);
-      for (var i = 0; i < 180; i++) {
+      for (var i = 0; i < 260; i++) {
         game.update(1 / 60);
       }
 
       expect(
         game.state.stars,
-        39 + const SagaFxState(completedLevel: 0).rewardStarCount,
+        39 + const SagaFxState(completedLevel: 1).rewardStarCount,
       );
       expect(game.state.energy, 30);
 
@@ -126,60 +149,65 @@ void main() {
       }
       expect(
         game.state.stars,
-        39 + const SagaFxState(completedLevel: 0).rewardStarCount,
+        39 + const SagaFxState(completedLevel: 1).rewardStarCount,
       );
       expect(game.state.energy, 30);
     });
 
     test('cleans up completion VFX after its bounded lifetime', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       game.moveToLevel(1);
-      game.update(1 / 15);
+      // The celebration only fires once the step's bars finish filling.
+      for (var i = 0; i < 180; i++) {
+        game.update(1 / 60);
+      }
       expect(game.fxState.isActive, isTrue);
 
-      game.update(4);
+      game.update(5);
       expect(game.fxState.isActive, isFalse);
       expect(game.fxState.activeAnimationCount, 0);
     });
 
-    test('defers interrupted rewards until the next visible arrival', () {
-      final game = SagaMapGame();
+    test('credits each completed step stars (per bar) and energy', () {
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
       game.moveToLevel(1);
-      for (var i = 0; i < 8; i++) {
+      for (var i = 0; i < 220; i++) {
         game.update(1 / 60);
       }
-      expect(game.state.currentLevel, 1);
-
       game.moveToLevel(2);
-      for (var i = 0; i < 16; i++) {
+      for (var i = 0; i < 260; i++) {
         game.update(1 / 60);
       }
-      expect(game.state.currentLevel, 2);
-      expect(game.state.stars, 39);
-      expect(game.state.energy, 29);
 
-      for (var i = 0; i < 80; i++) {
-        game.update(1 / 60);
-      }
+      // Each step's stars are distributed across its 3 bars and credited as
+      // they land, summing to the step's reward; energy is +1 per completion.
       final expectedStars =
           39 +
-          const SagaFxState(completedLevel: 0).rewardStarCount +
-          const SagaFxState(completedLevel: 1).rewardStarCount;
+          const SagaFxState(completedLevel: 1).rewardStarCount +
+          const SagaFxState(completedLevel: 2).rewardStarCount;
       expect(game.state.stars, expectedStars);
       expect(game.state.energy, 31);
     });
 
     test('major combo remains single and clears after completion', () {
-      final game = SagaMapGame();
+      // Pin a snappy camera so level activation is deterministic and not tied
+      // to the cosmetic default response.
+      final game = SagaMapGame()..setCameraTuning(response: 14);
 
-      game.moveToLevel(5);
-      game.update(1);
+      game.moveToLevel(4);
+      for (var i = 0; i < 200; i++) {
+        game.update(1 / 60);
+      }
       expect(game.fxState.comboNumber, 3);
       expect(game.fxState.activeAnimationCount, lessThanOrEqualTo(9));
 
-      game.update(4);
+      game.update(7); // combo finale holds longer before clearing
       expect(game.fxState.isActive, isFalse);
       expect(game.fxState.activeAnimationCount, 0);
     });
