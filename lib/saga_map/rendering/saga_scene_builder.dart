@@ -10,13 +10,31 @@ import 'saga_scene.dart';
 ///
 /// No mutable state, no drawing, no Flame lifecycle — every call is a pure
 /// function of its inputs.
-SagaScene buildSagaScene(SagaMapState state, PerspectiveProjector projector) {
+SagaScene buildSagaScene(
+  SagaMapState state,
+  PerspectiveProjector projector, {
+  double stepFillProgress = 1,
+  int? maxLevel,
+}) {
   final window = windowFor(state.currentLevel);
   final nodes = <ProjectedNode>[];
   for (final index in window.indices) {
-    final node = nodeAt(index, currentLevel: state.currentLevel);
+    if (maxLevel != null && index > maxLevel) continue;
+    final node = nodeAt(
+      index,
+      currentLevel: state.currentLevel,
+      preset: state.pathPreset,
+    );
     final projected = projector.project(node, state.progress);
     if (projected != null) nodes.add(projected);
   }
-  return SagaScene(window: window, nodes: nodes);
+  return SagaScene(
+    window: window,
+    nodes: nodes,
+    cameraProgress: state.progress,
+    projector: projector,
+    pathPreset: state.pathPreset,
+    stepFillProgress: stepFillProgress,
+    maxLevel: maxLevel,
+  );
 }

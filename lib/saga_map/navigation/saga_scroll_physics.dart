@@ -4,7 +4,7 @@ import 'dart:math' as math;
 ///
 /// Deliberately has no dependency on Flutter's `ListView`/`ScrollController`:
 /// `progress` is owned by `SagaMapState`, not by a scroll offset.
-const double _defaultSensitivity = 0.0025;
+const double _defaultSensitivity = 0.9;
 const double _defaultFriction = 6.0;
 const double _velocitySettleThreshold = 0.001;
 

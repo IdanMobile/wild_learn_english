@@ -12,7 +12,14 @@ void main() {
     });
 
     test('scales linearly with sensitivity', () {
-      expect(progressDeltaFromDrag(100, sensitivity: 0.01), closeTo(1.0, 1e-12));
+      expect(
+        progressDeltaFromDrag(100, sensitivity: 0.01),
+        closeTo(1.0, 1e-12),
+      );
+    });
+
+    test('default drag is large enough to cross level thresholds', () {
+      expect(progressDeltaFromDrag(180), greaterThan(140));
     });
   });
 

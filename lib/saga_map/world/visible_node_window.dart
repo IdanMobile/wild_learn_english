@@ -3,7 +3,7 @@
 /// accumulation across calls — every call recomputes the window from
 /// scratch, so it stays bounded no matter how large [currentLevel] grows.
 const int _behind = 2;
-const int _ahead = 24;
+const int _ahead = 14;
 
 /// Inclusive bounded range of node indices to render.
 class VisibleNodeWindow {

@@ -4,7 +4,7 @@ import 'package:learn_english_flutter/saga_map/world/visible_node_window.dart';
 void main() {
   group('windowFor', () {
     // Away from the origin the window is a constant size: _behind + _ahead + 1.
-    const boundedLength = 27; // 2 behind + 24 ahead + the current level.
+    const boundedLength = 17; // 2 behind + 14 ahead + the current level.
 
     test('visible count stays bounded for small travel', () {
       for (var level = 2; level < 100; level++) {

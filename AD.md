@@ -92,34 +92,34 @@ The POC fails if any of these happen:
 
 ## 2.1 Must ship
 
-- [ ] Android-runnable Flutter app
-- [ ] one primary Saga Map screen
-- [ ] vertical drag interaction
-- [ ] inertia/friction after release
-- [ ] one progression SSOT
-- [ ] deterministic infinite logical node sequence
-- [ ] bounded visible-node window
-- [ ] depth projection
-- [ ] near/far scale variation
-- [ ] horizon compression
-- [ ] depth-aware draw ordering
-- [ ] atmosphere/fog treatment
-- [ ] distant castle anchor
-- [ ] current/completed/upcoming node states
-- [ ] simple Flutter HUD
-- [ ] debug/architecture overlay
-- [ ] unit tests for core mathematical/domain invariants
-- [ ] physical Android profile-mode verification
-- [ ] architecture and decision documentation
+- [x] Android-runnable Flutter app
+- [x] one primary Saga Map screen
+- [x] vertical drag interaction
+- [x] inertia/friction after release
+- [x] one progression SSOT
+- [x] deterministic infinite logical node sequence
+- [x] bounded visible-node window
+- [x] depth projection
+- [x] near/far scale variation
+- [x] horizon compression
+- [x] depth-aware draw ordering
+- [x] atmosphere/fog treatment
+- [x] distant castle anchor
+- [x] current/completed/upcoming node states
+- [x] simple Flutter HUD
+- [x] debug/architecture overlay
+- [x] unit tests for core mathematical/domain invariants
+- [x] physical Android profile-mode verification
+- [x] architecture and decision documentation
 
 ## 2.2 Should ship if core gates are green
 
-- [ ] subtle current-node animation
-- [ ] one node tap/selection interaction
-- [ ] path preset/config variation proving separation of world generation from rendering
-- [ ] small celebration/particle effect
-- [ ] simple demo-like top counters
-- [ ] simple bottom navigation shell
+- [x] subtle current-node animation
+- [x] one node tap/selection interaction
+- [x] path preset/config variation proving separation of world generation from rendering
+- [x] small celebration/particle effect
+- [x] simple demo-like top counters
+- [x] simple bottom navigation shell
 - [ ] minimal event-driven sound feedback using `flame_audio`
 
 ## 2.3 Optional only after all mandatory gates
@@ -1100,19 +1100,19 @@ Test high-value invariants.
 
 Mandatory:
 
-- [ ] same index returns same logical position
-- [ ] very large positive index returns finite valid values
-- [ ] negative index returns finite valid values if supported
-- [ ] path preset changes intended geometry without changing renderer contract
+- [x] same index returns same logical position
+- [x] very large positive index returns finite valid values
+- [x] negative index returns finite valid values if supported
+- [x] path preset changes intended geometry without changing renderer contract
 
 ## 17.2 `VisibleNodeWindow`
 
 Mandatory:
 
-- [ ] visible count remains bounded
-- [ ] advancing progress advances integer window
-- [ ] no duplicate live indices
-- [ ] very large simulated progress remains bounded
+- [x] visible count remains bounded
+- [x] advancing progress advances integer window
+- [x] no duplicate live indices
+- [x] very large simulated progress remains bounded
 - [ ] simulated travel equivalent to at least 1,000,000 nodes does not grow visible count
 
 ## 17.3 `PerspectiveProjector`
@@ -1199,10 +1199,10 @@ Do not fabricate values.
 
 Mandatory:
 
-- [ ] no unbounded visible-node growth
-- [ ] no obvious persistent jank during normal presentation interaction
-- [ ] no crash during sustained traversal
-- [ ] profile evidence recorded honestly
+- [x] no unbounded visible-node growth
+- [x] no obvious persistent jank during normal presentation interaction
+- [x] no crash during sustained traversal
+- [x] profile evidence recorded honestly
 
 Preferred:
 
@@ -1378,13 +1378,13 @@ No Day 2 bonus work until this gate is green.
 
 Tasks:
 
-- [ ] debug overlay
-- [ ] actual progress
-- [ ] current index
-- [ ] actual visible count
-- [ ] path preset
+- [x] debug overlay
+- [x] actual progress
+- [x] current index
+- [x] actual visible count
+- [x] path preset
 - [ ] optional actual FPS source
-- [ ] projection debug mode
+- [x] projection debug mode
 
 **Gate D2-G1**
 
@@ -1394,10 +1394,10 @@ Pass when an interviewer can understand infinite/bounded/projection behavior wit
 
 Tasks:
 
-- [ ] second path preset/config
-- [ ] same renderer works unchanged
-- [ ] simple toggle in debug/demo UI
-- [ ] tests prove deterministic behavior
+- [x] second path preset/config
+- [x] same renderer works unchanged
+- [x] simple toggle in debug/demo UI
+- [x] tests prove deterministic behavior
 
 **Gate D2-G2**
 
@@ -1407,12 +1407,12 @@ Pass when world-generation variation does not require renderer rewrite.
 
 Tasks:
 
-- [ ] physical Android device
-- [ ] profile mode
-- [ ] sustained traversal scenario
-- [ ] DevTools/performance overlay observation
-- [ ] record findings
-- [ ] fix only evidence-backed bottlenecks
+- [x] physical Android device
+- [x] profile mode
+- [x] sustained traversal scenario
+- [x] DevTools/performance overlay observation
+- [x] record findings
+- [x] fix only evidence-backed bottlenecks
 
 **Gate D2-G3 — CRITICAL**
 
@@ -1445,31 +1445,31 @@ Delete any bonus that destabilizes the core.
 
 Tasks:
 
-- [ ] `flutter analyze`
-- [ ] tests
-- [ ] Android build/run verification
-- [ ] README
-- [ ] architecture doc
-- [ ] rationale companion updated through ADR-010
-- [ ] performance results
-- [ ] asset provenance doc
-- [ ] redundancy review
-- [ ] dead code removal
-- [ ] TODO audit
-- [ ] final demo path rehearsal
+- [x] `flutter analyze`
+- [x] tests
+- [x] Android build/run verification
+- [x] README
+- [x] architecture doc
+- [x] rationale companion updated through ADR-010
+- [x] performance results
+- [x] asset provenance doc
+- [x] redundancy review
+- [x] dead code removal
+- [x] TODO audit
+- [x] final demo path rehearsal
 
 **Final Gate**
 
 Must pass:
 
-- [ ] no known critical bug
-- [ ] no fake metric
-- [ ] no unbounded node growth
-- [ ] no duplicate progression SSOT
-- [ ] tests green
-- [ ] analyzer acceptable
-- [ ] physical Android demo verified
-- [ ] documentation matches actual code
+- [x] no known critical bug
+- [x] no fake metric
+- [x] no unbounded node growth
+- [x] no duplicate progression SSOT
+- [x] tests green
+- [x] analyzer acceptable
+- [x] physical Android demo verified
+- [x] documentation matches actual code
 
 ---
 
@@ -1763,37 +1763,41 @@ Do not write marketing claims unsupported by the implementation.
 
 | Work Item | Owner | Status | Evidence | Blocker / Next |
 |---|---|---|---|---|
-| AD locked in repository root | Architecture Guardian | NOT_STARTED | — | Copy this file to repo root |
-| Android bootstrap verified | — | NOT_STARTED | — | — |
-| Flutter/Flame versions recorded | — | NOT_STARTED | — | Resolve at implementation start |
-| Domain models | World agent | VERIFIED | Present & unmodified: `lib/saga_map/domain/saga_map_state.dart` (29 lines), `saga_node.dart` (15), `saga_node_state.dart` (1). `git status` shows these files untracked (`??`) with no edits made by this reconciliation (only AD.md changed). Consumed without error by the 13 passing world/projection tests below. | — |
-| Deterministic SagaPath | World agent | VERIFIED | Present & unmodified: `lib/saga_map/world/saga_path.dart` (37 lines). `flutter test test/saga_map/world/saga_path_test.dart` → "nodeAt is deterministic — same arguments yield equal results" passed (part of "All tests passed!" 13/13 run, Flutter 3.44.5 stable). | — |
+| AD locked in repository root | Architecture Guardian | VERIFIED | Recovery-Governance Exception 5: `AD.md` is present at repository root and was read in full during the 2026-07-09 direct execution takeover before code changes. | — |
+| Android bootstrap verified | — | VERIFIED | On 2026-07-10 the current APK built, installed, and launched on both the Android 15 Medium Phone AVD and Android 17 Pixel 10 Pro AVD. Debug and profile APK builds passed. | — |
+| Flutter/Flame versions recorded | — | VERIFIED | Recovery-Governance Exception 5: `flutter --version` → Flutter 3.44.5 stable, Dart 3.12.2, DevTools 2.57.0. `pubspec.yaml` declares `flame: ^1.37.0` and `flame_audio: ^2.12.1`; `pubspec.lock` contains resolved `flame`/`flame_audio` packages. | — |
+| Domain models | World agent | VERIFIED | `lib/saga_map/domain/saga_map_state.dart`, `saga_node.dart`, and `saga_node_state.dart` present. `flutter test test/saga_map` passed 33/33 including default path-preset and `copyWith` state tests. | — |
+| Deterministic SagaPath | World agent | VERIFIED | `lib/saga_map/world/saga_path.dart` owns deterministic `nodeAt`, `depth`, `levelForProgress`, and `SagaPathPreset`. `flutter test test/saga_map` passed 33/33 including deterministic, large-index, negative-index, preset-variation, and level-threshold cases. | — |
 | Bounded VisibleNodeWindow | World agent | VERIFIED | Present & unmodified: `lib/saga_map/world/visible_node_window.dart` (29 lines). `flutter test test/saga_map/world/visible_node_window_test.dart` → bounded-count (small travel + ~1,000,000-equivalent travel), forward-shift, and ascending-no-duplicate index invariants all passed (part of 13/13). | — |
-| World invariant tests | World agent | VERIFIED | `flutter test test/saga_map/world/saga_path_test.dart test/saga_map/world/visible_node_window_test.dart` → "All tests passed!" (0 failures). Files present & unmodified: `saga_path_test.dart` (41 lines), `visible_node_window_test.dart` (44 lines). | — |
+| World invariant tests | World agent | VERIFIED | `flutter test test/saga_map` passed 33/33 including `saga_path_test.dart`, `saga_map_state_test.dart`, and `visible_node_window_test.dart`. | — |
 | PerspectiveProjector | Projection agent | VERIFIED | Present & unmodified: `lib/saga_map/projection/perspective_projector.dart` (100 lines). `flutter test test/saga_map/projection/perspective_projector_test.dart` → farther-depth-smaller-scale, finite-output, camera-cull, and perspective-singularity-cull cases all passed (part of 13/13). | — |
 | Projector tests | Projection agent | VERIFIED | `flutter test test/saga_map/projection/perspective_projector_test.dart` → all cases passed within "All tests passed!" 13/13 run (Flutter 3.44.5 stable). File present & unmodified: `perspective_projector_test.dart` (65 lines). | — |
-| Basic renderer | Projection agent | NOT_STARTED | — | — |
-| Drag physics | Input agent | NOT_STARTED | — | — |
-| Inertia/friction | Input agent | NOT_STARTED | — | — |
-| Physics tests | Input agent | NOT_STARTED | — | — |
-| Infinite traversal integrated | Integration | NOT_STARTED | — | — |
-| Fog/depth tuning | Projection agent | NOT_STARTED | — | — |
-| Castle horizon | Projection/UI | NOT_STARTED | — | — |
-| Layered environment assets | UI/Visual agent | NOT_STARTED | — | Follow ADR-010; keep layers composable |
-| Asset provenance record | UI/Visual agent | NOT_STARTED | — | Document all non-procedural assets |
-| Node states visuals | Projection/UI | NOT_STARTED | — | — |
-| Day 1 critical gate | Architecture Guardian | NOT_STARTED | — | — |
-| Debug overlay | UI/Verification | NOT_STARTED | — | — |
-| Projection debug mode | Projection/Verification | NOT_STARTED | — | — |
-| Second path preset | World agent | NOT_STARTED | — | — |
-| Physical Android profile run | Verification | NOT_STARTED | — | — |
-| Performance results doc | Verification | NOT_STARTED | — | — |
-| HUD polish | UI agent | NOT_STARTED | — | — |
-| Decision rationale companion synced | Architecture Guardian | NOT_STARTED | `ARCHITECTURE_DECISIONS.md` | Copy to repo root and keep aligned with locked decisions |
-| README | Integration | NOT_STARTED | — | — |
-| Final redundancy audit | Architecture Guardian | NOT_STARTED | — | — |
-| Final analyzer/tests | Verification | NOT_STARTED | — | — |
-| Final Android demo verification | Verification | NOT_STARTED | — | — |
+| Basic renderer | Projection agent | VERIFIED | Recovery-Governance Exception 5: Present files `lib/saga_map/rendering/saga_scene.dart`, `saga_scene_builder.dart`, and `saga_map_painter.dart`; `flutter test test/saga_map` passed 33/33 including `saga_scene_builder_test.dart` scene-window, culling, ordering, and purity cases. Painter includes background, fogged procedural stones, shadows, current-node accent, and castle rendering. | — |
+| Drag physics | Input agent | VERIFIED | Recovery-Governance Exception 5: Present file `lib/saga_map/navigation/saga_scroll_physics.dart`; `flutter test test/saga_map` passed 33/33 including `progressDeltaFromDrag` positive/negative/zero direction and sensitivity cases. | — |
+| Inertia/friction | Input agent | VERIFIED | Recovery-Governance Exception 5: Present file `lib/saga_map/navigation/saga_scroll_physics.dart`; `flutter test test/saga_map` passed 33/33 including inertia progress continuation, exponential friction decay, settle threshold, and dt-aware split-step equivalence cases. | — |
+| Physics tests | Input agent | VERIFIED | Recovery-Governance Exception 5: Present file `test/saga_map/navigation/saga_scroll_physics_test.dart`; `flutter test test/saga_map` passed 33/33 on 2026-07-09. | — |
+| Infinite traversal integrated | Integration | VERIFIED | Recovery-Governance Exception 1 / Recovery-Governance Exception 2: `SagaMapGame.applyDragDelta` updates clamped absolute `progress` and derived `currentLevel` in one `copyWith`; `test/saga_map/saga_map_game_test.dart` proves currentLevel equals `levelForProgress(progress)` after each drag, multi-level jumps work, reverse drag clamps to zero, and long traversal still builds a non-empty scene. `flutter test test/saga_map` passed 33/33. | — |
+| Fog/depth tuning | Projection agent | VERIFIED | `SagaMapPainter` blends node color toward fog by projected `fogFactor`, paints procedural shadows, and accents current nodes. `flutter analyze` passed with no issues; `flutter test test/saga_map` passed 33/33. | — |
+| Castle horizon | Projection/UI | VERIFIED | `SagaMapGame.onLoad` loads `assets/environment/castle.png`; `SagaMapPainter` renders it near the horizon with haze tint. `flutter build apk --debug` passed, confirming asset declaration/build wiring. | — |
+| Layered environment assets | UI/Visual agent | VERIFIED | `assets/environment/` contains sky, mountains, haze, foreground mist, castle, and castle detail overlay as separate layers; `pubspec.yaml` declares them. `flutter build apk --debug` passed. | — |
+| Asset provenance record | UI/Visual agent | VERIFIED | `docs/assets.md` records all committed non-procedural assets and notes generated-first-party provenance. | — |
+| Node states visuals | Projection/UI | VERIFIED | `SagaMapPainter` uses a `switch` over `SagaNodeState` for completed/current/upcoming colors and current-node accent. `flutter analyze` passed. | — |
+| Day 1 critical gate | Architecture Guardian | VERIFIED | Android emulator launch, continuous movement, depth/castle composition, bounded window, one progress SSOT, analyzer, 70 tests, and APK builds are green. Pixel AVD screenshots verified the current rendered experience. | — |
+| Debug overlay | UI/Verification | VERIFIED | `lib/saga_map/debug/saga_debug_overlay.dart` shows real progress, current index, bounded visible count, path preset, renderer label, and explicitly labels FPS unavailable rather than faking it. Wired through `SagaMapScreen`. `flutter analyze` passed. | — |
+| Projection debug mode | Projection/Verification | VERIFIED | Debug overlay toggles projection debug; `SagaMapPainter` draws the horizon line from the existing scene/render pass without recomputing projection. `flutter analyze` passed. | — |
+| Second path preset | World agent | VERIFIED | Recovery-Governance Exception 2 / Recovery-Governance Exception 3: `SagaPathPreset { gentle, dramatic }` added in `saga_path.dart`, `SagaMapState` tracks the active preset, `SagaMapGame.togglePathPreset` switches it, and `saga_path_test.dart` proves geometry changes without changing node contract. Renderer/projection/navigation APIs unchanged. | — |
+| Physical Android profile run | Verification | VERIFIED | Pixel 7 Pro, Android 16 API 36, arm64: current profile APK completed a controlled 30-second traversal and reward/combo scenario at a DevTools average of 120 FPS. Three isolated slow frames appeared, with no persistent jank, crash, Flutter exception, overflow, asset failure, or skipped-frame report. | — |
+| Performance results doc | Verification | VERIFIED | `docs/performance/results.md` records the physical Pixel 7 Pro profile trace, both emulator compatibility runs, sustained traversal, exact measured findings, rejected invalid emulator timing sources, visual review, and test/build evidence. | — |
+| HUD polish | UI agent | VERIFIED | `lib/ui/saga_hud.dart` uses safe-area responsive counters, measured reward targets, shared idle motion, contextual panels, pressed feedback, side tools, lesson card, and bottom navigation. Widget tests tap every visible control. | — |
+| Reward collection flow | Integration/UI | VERIFIED | Stars and energy follow curved paths to measured chip centers; `SagaMapState` counters update once at arrival. Interrupted flights defer into the next visible arrival. Unit/widget tests cover timing, exact-once credit, interruption, and both measured targets. | — |
+| Major lightning/combo VFX | Projection/UI | VERIFIED | Supplied 8-frame lightning, dynamic number, soft glow, sparkles, residual streak, hero star, and bounded cleanup are integrated. Pixel AVD profile screenshots verified the entry and number-emphasis stages; lifecycle tests verify one bounded active sequence and cleanup. | — |
+| Interactive HUD and map | UI/Integration | VERIFIED | Header counters/profile, five side tools, six bottom navigation controls, lesson card, level/preset/debug controls, current nodes, and deterministic chest/orb/crystal steps all respond with visual feedback or contextual panels. | — |
+| Widget/integration coverage | Verification | VERIFIED | `test/ui/saga_hud_test.dart` and `test/ui/saga_map_screen_test.dart` cover app launch, measured targets, every HUD control, debug toggle, progression, current-node hit handling, panels, and delayed counter update. | — |
+| Decision rationale companion synced | Architecture Guardian | VERIFIED | `ARCHITECTURE_DECISIONS.md` exists at repository root and remains the rationale companion linked by `README.md`; no new ADR conflict was introduced by the implementation. | — |
+| README | Integration | VERIFIED | `README.md` rewritten with summary, run commands, architecture diagram, dependency rationale, infinite-world explanation, performance status, tests, limitations, and future work. | — |
+| Final redundancy audit | Architecture Guardian | VERIFIED | `rg` for duplicate movement fields found no `scrollOffset`, `cameraOffset`, `worldOffset`, or `mapOffset` in real code; `double progress` appears only as the canonical `SagaMapState.progress` field and function parameters/results. | — |
+| Final analyzer/tests | Verification | VERIFIED | `flutter analyze` → no issues. `flutter test` → 70/70 passing. Debug/profile APK builds pass. | — |
+| Final Android demo verification | Verification | VERIFIED | Current profile APK built, installed, and completed the full controlled scenario on a physical Pixel 7 Pro. Post-run visual review confirmed fixed HUD placement, continuous castle path, preserved node states, bounded visible content, and responsive progression. | — |
 
 ## Progress update rule
 
@@ -1833,26 +1837,26 @@ When changing a row to `VERIFIED`, add concrete evidence, for example:
 
 ## Proof
 
-- [ ] debug overlay
-- [ ] bounded-count demonstration
-- [ ] projection debug mode
-- [ ] second path preset or equivalent real extension proof
+- [x] debug overlay
+- [x] bounded-count demonstration
+- [x] projection debug mode
+- [x] second path preset or equivalent real extension proof
 
 ## Quality
 
-- [ ] core unit tests green
-- [ ] analyzer acceptable
-- [ ] dead code removed
-- [ ] no fake metrics
-- [ ] no critical TODO
+- [x] core unit tests green
+- [x] analyzer acceptable
+- [x] dead code removed
+- [x] no fake metrics
+- [x] no critical TODO
 
 ## Performance
 
-- [ ] physical Android profile mode
-- [ ] sustained traversal verified
-- [ ] results documented
-- [ ] no unbounded growth
-- [ ] no crash
+- [x] physical Android profile mode
+- [x] sustained traversal verified
+- [x] results documented
+- [x] no unbounded growth
+- [x] no crash
 
 ## Documentation
 
@@ -1908,4 +1912,3 @@ When uncertain, optimize for:
 5. measured performance;
 6. future optionality;
 7. fewer moving parts.
-

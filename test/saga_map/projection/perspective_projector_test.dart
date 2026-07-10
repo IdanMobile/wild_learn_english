@@ -30,8 +30,69 @@ void main() {
 
       // baseY (400) is below the horizon (50); far nodes converge upward.
       expect(far.screenY, lessThan(near.screenY));
-      expect((far.screenY - projector.horizonY).abs(),
-          lessThan((near.screenY - projector.horizonY).abs()));
+      expect(
+        (far.screenY - projector.horizonY).abs(),
+        lessThan((near.screenY - projector.horizonY).abs()),
+      );
+    });
+
+    test('passed nodes move down the ground plane instead of up', () {
+      final current = projector.project(nodeAtDepth(10), 10)!;
+      final passed = projector.project(nodeAtDepth(8), 10)!;
+
+      expect(current.screenY, projector.baseY);
+      expect(passed.screenY, greaterThan(current.screenY));
+    });
+
+    test('near passed nodes keep a capped visual scale', () {
+      final passed = projector.project(nodeAtDepth(8), 10)!;
+
+      expect(passed.scale, lessThanOrEqualTo(1.28));
+      expect(passed.scale.isFinite, isTrue);
+    });
+
+    test('cameraX creates depth-based horizontal parallax', () {
+      const centered = PerspectiveProjector(
+        viewportCenterX: 100,
+        horizonY: 50,
+        baseY: 400,
+        cameraX: 0,
+      );
+      const moved = PerspectiveProjector(
+        viewportCenterX: 100,
+        horizonY: 50,
+        baseY: 400,
+        cameraX: 20,
+      );
+
+      final nearBefore = centered.project(nodeAtDepth(1, x: 0), 0)!;
+      final nearAfter = moved.project(nodeAtDepth(1, x: 0), 0)!;
+      final farBefore = centered.project(nodeAtDepth(30, x: 0), 0)!;
+      final farAfter = moved.project(nodeAtDepth(30, x: 0), 0)!;
+
+      final nearShift = (nearAfter.screenX - nearBefore.screenX).abs();
+      final farShift = (farAfter.screenX - farBefore.screenX).abs();
+
+      expect(nearShift, greaterThan(farShift));
+    });
+
+    test('cameraYaw subtly changes horizontal framing', () {
+      const straight = PerspectiveProjector(
+        viewportCenterX: 100,
+        horizonY: 50,
+        baseY: 400,
+      );
+      const yawed = PerspectiveProjector(
+        viewportCenterX: 100,
+        horizonY: 50,
+        baseY: 400,
+        cameraYaw: 0.12,
+      );
+
+      final before = straight.project(nodeAtDepth(30, x: 0), 0)!;
+      final after = yawed.project(nodeAtDepth(30, x: 0), 0)!;
+
+      expect(after.screenX, isNot(before.screenX));
     });
 
     test('a wide sweep of valid inputs yields only finite outputs', () {
@@ -61,5 +122,38 @@ void main() {
       final result = projector.project(nodeAtDepth(4), 10); // relDepth = -6
       expect(result, isNull);
     });
+
+    test('platform aspect flattens toward the horizon', () {
+      final near = projector.project(nodeAtDepth(1), 0)!;
+      final far = projector.project(nodeAtDepth(30), 0)!;
+
+      expect(far.platformAspect, lessThan(near.platformAspect));
+      expect(far.platformAspect, inInclusiveRange(0.24, 0.72));
+      expect(near.platformAspect, inInclusiveRange(0.24, 0.72));
+    });
+
+    test(
+      'camera pitch changes platform foreshortening without invalid values',
+      () {
+        const lowPitch = PerspectiveProjector(
+          viewportCenterX: 100,
+          horizonY: 50,
+          baseY: 400,
+          cameraPitch: 0.08,
+        );
+        const highPitch = PerspectiveProjector(
+          viewportCenterX: 100,
+          horizonY: 50,
+          baseY: 400,
+          cameraPitch: 0.34,
+        );
+
+        final low = lowPitch.project(nodeAtDepth(3), 0)!;
+        final high = highPitch.project(nodeAtDepth(3), 0)!;
+
+        expect(high.platformAspect, greaterThan(low.platformAspect));
+        expect(high.platformAspect.isFinite, isTrue);
+      },
+    );
   });
 }

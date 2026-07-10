@@ -108,6 +108,34 @@ this is a second, later layer of recovery state):
 Do not claim TASK-0001 through TASK-0008 of that run are all accepted
 baseline — only TASK-0001–TASK-0007 are. TASK-0008 is reopened.
 
+## THIRD-GENERATION EXECUTION STATE — run-20260709124807372-32774
+
+A third run, `run-20260709124807372-32774` (immutable evidence — do not
+modify anything under
+`~/.claude/orchestration/runs/run-20260709124807372-32774/`), was planned
+from an earlier version of this prompt and failed before any recovery work
+ran. Its TASK-0001 (read-only baseline + reopened-bug inspection,
+`owned_paths: []`) required `AD.md` §29 "bootstrap-through-W3-1" rows to
+already read `VERIFIED`. They read `NOT_STARTED` live, and no task anywhere
+in that plan owned `AD.md` upstream of TASK-0001 — the criterion was
+unsatisfiable before execution began. TASK-0001 failed 2/2 attempts,
+correctly (both attempts modified zero files); every downstream task,
+including the movement recovery and Gate D1-G3, was never reached.
+
+This was not a movement-model defect — it is a distinct, prior gap: nothing
+in earlier prompt versions ever assigned ownership of reconciling `AD.md`'s
+own stale rows. **`AD.md` §29 is a continuously-updated ledger by design
+(AUTHORITY RULES §3: "update it as you go"), not a frozen Continuation
+Baseline artifact** — its rows may legitimately still read `NOT_STARTED`
+for real, unfinished work, but a read-only verification task must never be
+the first and only task expected to make a stale-but-actually-complete row
+read `VERIFIED`. WAVE 3 below now assigns that reconciliation its own
+explicit, upstream task — see the required topology at the start of WAVE 3.
+
+Preserve as accepted baseline from this run: none — it failed at its first
+task, before producing any output. Do not claim any TASK from
+`run-20260709124807372-32774` is accepted baseline.
+
 ## RECOVERY GOVERNANCE
 
 The new plan must:
@@ -127,8 +155,21 @@ Every later-wave modification to a Continuation Baseline file must cite one of
 these pre-approved exceptions by number in its own acceptance criteria — this
 satisfies the "surfaced as an explicit exception requiring review" rule above
 without re-litigating the justification in every task. A baseline-file touch that
-does **not** match one of these four is a new, unreviewed exception and must not
+does **not** match one of these five is a new, unreviewed exception and must not
 be scheduled silently.
+
+**MANDATORY citation rule — this generates real tasks the automatic semantic
+validator checks, read it before generating any task:** for every task whose
+owned paths include ANY Continuation Baseline file, the generated task's OWN
+description or acceptance criteria (not this prompt) MUST literally contain
+the phrase "Recovery-Governance Exception `<N>`" with the correct number.
+Two failure modes are BOTH insufficient and BOTH will be rejected: (1)
+**source-level association alone** — the file being *listed* under an
+Exception's "Owner/work item" line in this prompt does not transfer to the
+generated task automatically; (2) **inherited implication** — a task's
+description explaining *why* it touches a baseline file, without the literal
+citation string, does not count even if the reasoning is correct. When in
+doubt, over-cite in the generated task rather than omit it.
 
 ### Exception 1 — `lib/saga_map/saga_map_screen.dart`
 - **Later responsibility requiring modification:** W2-6 (wiring `GameWidget` in
@@ -146,11 +187,19 @@ be scheduled silently.
   `Scaffold`/`GameWidget` instantiation.
 - **Owner/work item:** W2-6, W3-2, W5-1, W8-2 — each additive, in that order.
 
-### Exception 2 — `lib/saga_map/world/saga_path.dart`
-- **Later responsibility requiring modification:** W3-2 (adding
-  `levelForProgress(double progress)` — the canonical `progress` →
-  `currentLevel` derivation required by Gate D1-G3), W4-1 (tuning meander
-  constants for depth feel), W6-1 (adding `SagaPathPreset` enum).
+### Exception 2 — `lib/saga_map/world/saga_path.dart` AND `test/saga_map/world/saga_path_test.dart`
+This exception governs BOTH the implementation file and its baseline test
+file — they are modified together and share one justification. Any
+generated task that owns either file must cite "Recovery-Governance
+Exception 2" in its own task text (see the citation-fidelity rule above the
+exceptions list — inheriting this from the prompt is not sufficient).
+- **Later responsibility requiring modification:**
+  - `lib/saga_map/world/saga_path.dart`: W3-2 (adding
+    `levelForProgress(double progress)` — the canonical `progress` →
+    `currentLevel` derivation required by Gate D1-G3), W4-1 (tuning meander
+    constants for depth feel), W6-1 (adding `SagaPathPreset` enum).
+  - `test/saga_map/world/saga_path_test.dart`: **W3-3** (adding the
+    `levelForProgress` regression cases A–F required by WAVE 3 below).
 - **Why additive modification is necessary:**
   - W3-2: `saga_path.dart` already owns the depth-spacing constant and the
     `depth(index)` forward mapping; deriving the inverse (`progress` → level)
@@ -161,20 +210,31 @@ be scheduled silently.
     adjusted once real rendering exists to judge them against;
     `SagaPathPreset` is the extensibility proof Gate D2-G2 explicitly
     requires.
+  - **W3-3: a new baseline-owned symbol (`levelForProgress`) requires new
+    baseline-owned test coverage in the same file that already tests
+    `saga_path.dart` — this is the required test companion to W3-2, not an
+    independent modification, and it extends `test/saga_map/world/saga_path_test.dart`
+    exactly as additively as W3-2 extends `saga_path.dart` itself.**
 - **Existing verified behavior that must remain unchanged:** `nodeAt`'s signature
   (`SagaNode nodeAt(int index, {required int currentLevel})`), its determinism
   (same index + currentLevel → identical node, always), the existing
-  depth-spacing constant's value and meaning, and the "no Flutter/
-  Flame/Canvas import, no cached mutable history" constraints.
-- **Prohibited regressions:** `test/saga_map/world/saga_path_test.dart` must pass
-  unmodified after every addition/tuning/extension; no strategy-interface
-  abstraction for the two-preset case (§15 rule 7 — a plain `switch` only);
-  `levelForProgress` must reuse the existing depth-spacing constant — it must
-  not introduce a second, duplicate spacing value.
-- **Required tests proving no regression:** add `levelForProgress` cases to
-  `test/saga_map/world/saga_path_test.dart` (see WAVE 3 below for the exact
-  list) — the file's existing `nodeAt`/depth tests must stay green.
-- **Owner/work item:** W3-2 (`levelForProgress`, additive), W4-1 (constant
+  depth-spacing constant's value and meaning, the "no Flutter/
+  Flame/Canvas import, no cached mutable history" constraints, and every
+  existing test case already in `saga_path_test.dart` (all must keep passing,
+  byte-for-byte behaviorally unchanged).
+- **Prohibited regressions:** `test/saga_map/world/saga_path_test.dart`'s
+  prior `nodeAt`/depth test cases must not be rewritten, removed, or
+  weakened by W3-3 — only the A–F `levelForProgress` cases may be added; no
+  strategy-interface abstraction for the two-preset case (§15 rule 7 — a
+  plain `switch` only); `levelForProgress` must reuse the existing
+  depth-spacing constant — neither the implementation nor its tests may
+  introduce a second, duplicate spacing value.
+- **Required tests proving no regression:** W3-3 adds exactly the
+  `levelForProgress` cases A–F (see WAVE 3 below for the exact list) to
+  `test/saga_map/world/saga_path_test.dart` — the file's existing `nodeAt`/depth
+  tests must stay green, unmodified, alongside them.
+- **Owner/work item:** W3-2 (`levelForProgress` implementation, additive),
+  **W3-3 (`levelForProgress` test coverage, additive)**, W4-1 (constant
   tuning), W6-1 (`SagaPathPreset` enum).
 
 ### Exception 3 — `lib/saga_map/domain/saga_map_state.dart` (the movement SSOT)
@@ -219,6 +279,32 @@ be scheduled silently.
   updated in the same task, per W8-3).
 - **Owner/work item:** W8-3 — additive only, explicitly optional/skippable per
   §13.5.
+
+### Exception 5 — `AD.md` §29 ledger reconciliation (W3-0b only)
+- **Later responsibility requiring modification:** W3-0b (reconciling stale
+  bootstrap-through-W3-1 §29 rows before any read-only task is required to
+  observe them as `VERIFIED`).
+- **Why this needs a declared exception even though `AD.md` is a living
+  ledger, not a frozen baseline file:** §29 is explicitly designed for
+  continuous updates ("update it as you go" — AUTHORITY RULES §3), so routine
+  gate-evidence rows are not baseline-frozen content. This exception exists
+  only because W3-0b is a *dedicated* reconciliation task (not incidental
+  gate bookkeeping) and its output gates whether W3-0c can pass — its scope
+  must be explicitly bounded so it cannot become a shortcut for marking
+  unfinished work `VERIFIED`.
+- **Existing verified behavior that must remain unchanged:** rows already
+  correctly `VERIFIED` (e.g. the six World/Projection rows) must not be
+  touched or have their evidence text altered.
+- **Prohibited regressions:** no row may be changed to `VERIFIED` without
+  concrete evidence (existing file + passing test + prior verified-run
+  citation) recorded in that row's Evidence column; unrelated rows outside
+  the bootstrap-through-W3-1 scope must be left exactly as they are; W3-0b
+  must not touch any implementation file — `AD.md` only.
+- **Owner/work item:** W3-0b only.
+
+This exception is subject to the MANDATORY citation rule at the top of the
+Pre-Declared Recovery-Governance Exceptions section above — the generated
+W3-0b task must literally contain "Recovery-Governance Exception 5".
 
 ## LOCKED DECISIONS FROM PRIOR PLANNING SESSION
 
@@ -389,9 +475,54 @@ depend on the painter; the painter does not depend on the scene builder unless a
 future wave explicitly justifies it in writing.
 
 ### WAVE 3 — Interaction (Gate D1-G3, CRITICAL)
+
+**Required topology for this wave (unambiguous, do not invert or collapse
+into a single task):**
+```
+W3-0a  ledger evidence inspection (read-only)
+   ↓
+W3-0b  AD.md ledger reconciliation (owns AD.md only, Exception 5)
+   ↓
+W3-0c  read-only baseline + reopened-bug verification
+   ↓
+W3-1 (already-verified baseline, informational only) / W3-2  movement recovery
+   ↓
+Gate D1-G3 (CRITICAL)
+   ↓
+WAVE 4+
+```
+This exists because `run-20260709124807372-32774`'s TASK-0001 collapsed
+ledger inspection and verification into one read-only task with no upstream
+task able to make its own criteria true — see Third-Generation Execution
+State above. W3-0a/W3-0b/W3-0c split that back into separately-owned steps.
+
+- **W3-0a** Read-only: inspect `AD.md` §29 rows in the bootstrap-through-W3-1
+  range. For each row not already `VERIFIED`, gather concrete evidence of
+  whether the underlying work is actually done (file exists on disk, its
+  test passes, and/or it is cited as verified in `run-20260709090051894-25468`
+  or `run-20260709112606184-87488`'s execution evidence). Produce an
+  evidence list; do not modify `AD.md` or any other file.
+- **W3-0b** Using W3-0a's evidence, update `AD.md` §29 (Exception 5): change
+  to `VERIFIED` only the rows W3-0a proved are actually done, with concrete
+  evidence recorded in that row's Evidence column (never `VERIFIED` merely
+  because this prompt says so). Leave any row honestly `NOT_STARTED` if
+  W3-0a could not prove it — this task must not fabricate completeness.
+  Preserve every unrelated row exactly as-is. Touches `AD.md` only, no
+  implementation file.
+- **W3-0c** Read-only, depends on W3-0b: re-verify the Continuation Baseline
+  files listed above are present with their documented roles; re-verify
+  `AD.md` §29 bootstrap-through-W3-1 rows now read `VERIFIED` for whatever
+  W3-0b proved (if W3-0b honestly left a row `NOT_STARTED` because the
+  underlying work is genuinely missing, this task must report that
+  truthfully, not treat it as a pass); confirm `levelForProgress` is still
+  absent from `lib/` and `test/`, and that `saga_map_game.dart`'s
+  `onDragUpdate` still only mutates `progress` — i.e. the reopened bug is
+  still real and still needs W3-2 below.
 - **W3-1** `lib/saga_map/navigation/saga_scroll_physics.dart` — drag delta →
   sensitivity → progress delta; release inertia with `dt`-aware friction decay,
   settles below a threshold; never binds to a Flutter `ListView` scroll offset.
+  Already accepted baseline per Second-Generation Execution State above —
+  informational only, do not re-schedule.
 - **W3-2** Wire drag input (Flame `DragCallbacks` or `GestureDetector` around
   `GameWidget`) into `SagaScrollPhysics` → `SagaMapState.progress` → the render
   pipeline, completing the full `AD.md` §5.1 pipeline end-to-end — AND own the
@@ -421,13 +552,18 @@ future wave explicitly justifies it in writing.
   above; do not treat any existing `onDragUpdate` as already satisfying this.**
 - **W3-3** `test/saga_map/navigation/saga_scroll_physics_test.dart` — drag changes
   progress, release inertia continues, friction decays, settles, `dt`-aware
-  (unchanged from before). Extend `test/saga_map/world/saga_path_test.dart`
-  with `levelForProgress` cases: (A) below the first threshold → level 0,
+  (unchanged from before). Extend baseline file
+  `test/saga_map/world/saga_path_test.dart` (**Recovery-Governance
+  Exception 2** — this task's generated description and acceptance criteria
+  must carry that literal citation, not just this prompt's) with
+  `levelForProgress` cases: (A) below the first threshold → level 0,
   (B) exactly at a threshold → that level, (C) just above a threshold → that
   level, (D) a multi-threshold jump in one call → the correct higher level,
   (E) reverse/decreasing progress → level decreases accordingly, (F) clamp
   at zero for any non-positive progress. Existing `nodeAt`/depth tests in
-  that file must pass unmodified.
+  that file must pass unmodified — add only cases A–F, never rewrite, remove,
+  or weaken any prior test case. Reuse the existing depth-spacing constant;
+  do not duplicate it.
 - **W3-4** `test/saga_map/saga_map_game_test.dart` (new file) — drive
   `onDragUpdate` directly (no widget pump needed for pure state assertions):
   (G) `progress` stays absolute and non-negative through a drag sequence,
