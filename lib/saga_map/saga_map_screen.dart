@@ -21,11 +21,9 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
     const SagaMapState(progress: 0, currentLevel: 0),
   );
   final _cameraNotifier = ValueNotifier(const SagaCameraSnapshot.zero());
-  final _projectionDebugNotifier = ValueNotifier(false);
   final _stepCountController = TextEditingController(text: '100');
   late final SagaMapGame _game = SagaMapGame(
     stateNotifier: _stateNotifier,
-    projectionDebugNotifier: _projectionDebugNotifier,
     cameraDebugNotifier: _cameraNotifier,
     onNodePressed: _showNodePanel,
   );
@@ -41,7 +39,6 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
   void dispose() {
     _stateNotifier.dispose();
     _cameraNotifier.dispose();
-    _projectionDebugNotifier.dispose();
     _stepCountController.dispose();
     super.dispose();
   }
@@ -74,49 +71,40 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
               setState(() => _debugVisible = !_debugVisible);
             },
           ),
-          ValueListenableBuilder<bool>(
-            valueListenable: _projectionDebugNotifier,
-            builder: (context, projectionDebugEnabled, _) {
-              return SagaDebugOverlay(
-                stateListenable: _stateNotifier,
-                cameraListenable: _cameraNotifier,
-                visible: _debugVisible,
-                projectionDebugEnabled: projectionDebugEnabled,
-                infiniteSteps: _infiniteSteps,
-                stepCount: _stepCount,
-                cameraHeight: _cameraHeight,
-                cameraAngle: _cameraAngle,
-                cameraResponse: _cameraResponse,
-                onProjectionDebugChanged: (value) {
-                  _projectionDebugNotifier.value = value;
-                },
-                onInfiniteStepsChanged: (value) {
-                  setState(() => _infiniteSteps = value);
-                  _game.setStepLimit(stepCount: value ? null : _stepCount);
-                },
-                onStepCountChanged: (value) {
-                  final stepCount = value.clamp(1, 1000000);
-                  setState(() => _stepCount = stepCount);
-                  _stepCountController.text = '$stepCount';
-                  _game.setStepLimit(
-                    stepCount: _infiniteSteps ? null : stepCount,
-                  );
-                },
-                onCameraHeightChanged: (value) {
-                  setState(() => _cameraHeight = value);
-                  _game.setCameraTuning(height: value);
-                },
-                onCameraAngleChanged: (value) {
-                  setState(() => _cameraAngle = value);
-                  _game.setCameraTuning(angle: value);
-                },
-                onCameraResponseChanged: (value) {
-                  setState(() => _cameraResponse = value);
-                  _game.setCameraTuning(response: value);
-                },
-                stepCountController: _stepCountController,
+          SagaDebugOverlay(
+            stateListenable: _stateNotifier,
+            cameraListenable: _cameraNotifier,
+            visible: _debugVisible,
+            infiniteSteps: _infiniteSteps,
+            stepCount: _stepCount,
+            cameraHeight: _cameraHeight,
+            cameraAngle: _cameraAngle,
+            cameraResponse: _cameraResponse,
+            onInfiniteStepsChanged: (value) {
+              setState(() => _infiniteSteps = value);
+              _game.setStepLimit(stepCount: value ? null : _stepCount);
+            },
+            onStepCountChanged: (value) {
+              final stepCount = value.clamp(1, 1000000);
+              setState(() => _stepCount = stepCount);
+              _stepCountController.text = '$stepCount';
+              _game.setStepLimit(
+                stepCount: _infiniteSteps ? null : stepCount,
               );
             },
+            onCameraHeightChanged: (value) {
+              setState(() => _cameraHeight = value);
+              _game.setCameraTuning(height: value);
+            },
+            onCameraAngleChanged: (value) {
+              setState(() => _cameraAngle = value);
+              _game.setCameraTuning(angle: value);
+            },
+            onCameraResponseChanged: (value) {
+              setState(() => _cameraResponse = value);
+              _game.setCameraTuning(response: value);
+            },
+            stepCountController: _stepCountController,
           ),
         ],
       ),

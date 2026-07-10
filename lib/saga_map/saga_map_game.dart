@@ -28,13 +28,11 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
   SagaMapGame({
     SagaMapState? state,
     this.stateNotifier,
-    this.projectionDebugNotifier,
     this.cameraDebugNotifier,
     this.onNodePressed,
   }) : _state = state ?? const SagaMapState(progress: 0, currentLevel: 0);
 
   final ValueNotifier<SagaMapState>? stateNotifier;
-  final ValueNotifier<bool>? projectionDebugNotifier;
   final ValueNotifier<SagaCameraSnapshot>? cameraDebugNotifier;
   final ValueChanged<int>? onNodePressed;
   Image? _skyImage;
@@ -213,7 +211,6 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
       fxState: _fxState,
       starTarget: _starTarget,
       energyTarget: _energyTarget,
-      showProjectionDebug: projectionDebugNotifier?.value ?? false,
     ).paint(canvas, Size(size.x, size.y));
   }
 

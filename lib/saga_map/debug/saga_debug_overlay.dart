@@ -10,13 +10,11 @@ class SagaDebugOverlay extends StatelessWidget {
     required this.stateListenable,
     required this.cameraListenable,
     required this.visible,
-    required this.projectionDebugEnabled,
     required this.infiniteSteps,
     required this.stepCount,
     required this.cameraHeight,
     required this.cameraAngle,
     required this.cameraResponse,
-    required this.onProjectionDebugChanged,
     required this.onInfiniteStepsChanged,
     required this.onStepCountChanged,
     required this.onCameraHeightChanged,
@@ -28,13 +26,11 @@ class SagaDebugOverlay extends StatelessWidget {
   final ValueNotifier<SagaMapState> stateListenable;
   final ValueListenable<SagaCameraSnapshot> cameraListenable;
   final bool visible;
-  final bool projectionDebugEnabled;
   final bool infiniteSteps;
   final int stepCount;
   final double cameraHeight;
   final double cameraAngle;
   final double cameraResponse;
-  final ValueChanged<bool> onProjectionDebugChanged;
   final ValueChanged<bool> onInfiniteStepsChanged;
   final ValueChanged<int> onStepCountChanged;
   final ValueChanged<double> onCameraHeightChanged;
@@ -90,16 +86,6 @@ class SagaDebugOverlay extends StatelessWidget {
                         const Text('Renderer: 2.5D projection'),
                         const Text('FPS: unavailable'),
                         const SizedBox(height: 8),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Projection debug'),
-                            Switch(
-                              value: projectionDebugEnabled,
-                              onChanged: onProjectionDebugChanged,
-                            ),
-                          ],
-                        ),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -161,7 +147,7 @@ class SagaDebugOverlay extends StatelessWidget {
                         _DebugSlider(
                           label: 'Speed',
                           value: cameraResponse,
-                          min: 8,
+                          min: 1,
                           max: 26,
                           onChanged: onCameraResponseChanged,
                         ),

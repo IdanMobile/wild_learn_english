@@ -36,7 +36,6 @@ class SagaMapPainter extends CustomPainter {
     this.fxState = const SagaFxState(),
     this.starTarget,
     this.energyTarget,
-    this.showProjectionDebug = false,
   });
 
   final SagaScene scene;
@@ -58,7 +57,6 @@ class SagaMapPainter extends CustomPainter {
   final SagaFxState fxState;
   final Offset? starTarget;
   final Offset? energyTarget;
-  final bool showProjectionDebug;
 
   static const double _baseRadius = 54;
   static const Color _completedColor = Color(0xFF21A9F2);
@@ -74,10 +72,6 @@ class SagaMapPainter extends CustomPainter {
   final Paint _shadowPaint = Paint()
     ..style = PaintingStyle.fill
     ..color = const Color(0x1F6A8EA0);
-  final Paint _debugPaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 1
-    ..color = const Color(0x9980A6B8);
   final Paint _strokePaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 2
@@ -98,14 +92,6 @@ class SagaMapPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     _paintBackground(canvas, size);
     _paintCastle(canvas, size);
-    if (showProjectionDebug) {
-      canvas.drawLine(
-        Offset(0, size.height * 0.15),
-        Offset(size.width, size.height * 0.15),
-        _debugPaint,
-      );
-    }
-
     _paintHorizonClouds(canvas, size);
     _paintAmbientSparkles(canvas, size);
 
@@ -295,9 +281,11 @@ class SagaMapPainter extends CustomPainter {
         scene.projector.cameraX -
         relativeDepth * scene.projector.cameraYaw * 0.06;
     final dx = size.width * 0.5 + yawedX * scale;
-    final stableHorizonY = size.height * 0.17;
-    final stableBaseY = size.height * 0.56;
-    final dy = stableHorizonY + (stableBaseY - stableHorizonY) * scale;
+    // Share the node projector's ground plane so the castle sits exactly
+    // where the path converges, however the debug camera is tuned.
+    final horizonY = scene.projector.horizonY;
+    final baseY = scene.projector.baseY;
+    final dy = horizonY + (baseY - horizonY) * scale;
     return (dx: dx, dy: dy, scale: scale);
   }
 

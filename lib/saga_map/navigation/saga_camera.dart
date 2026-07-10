@@ -25,7 +25,7 @@ class SagaCamera {
   void tune({double? height, double? angle, double? response}) {
     if (height != null) this.height = height.clamp(0.48, 0.82);
     if (angle != null) this.angle = angle.clamp(0.08, 0.34);
-    if (response != null) this.response = response.clamp(8.0, 26.0);
+    if (response != null) this.response = response.clamp(1.0, 26.0);
   }
 
   void update(double dt, SagaPathPreset preset) {
