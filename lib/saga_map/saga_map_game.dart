@@ -62,8 +62,6 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
   double _glideTo = 0;
   double _glideElapsed = 0;
   double _glideDuration = 0;
-  // Seconds for a current step's 3 progress bars to fill (shared with render).
-  static const double _stepFillDuration = 1.9;
   // Level whose completion celebration waits for its bars to finish filling.
   int? _pendingCompletionLevel;
   // Reward stars in flight to the HUD chip, one burst per filled progress bar.
@@ -72,10 +70,6 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
   // In-flight bar-star bursts: when each reaches the chip its [stars] are added
   // to the total (the step's reward is distributed across its 3 bars).
   final List<({double time, int stars})> _barStarLandings = [];
-  static const double _barStarFlight = 0.8; // matches the painter flight time
-  // Bonus stars a special (prop) step drops from the item poof — must match the
-  // number of poof stars the painter flies to the chip.
-  static const int _propStarBonus = 10;
   var _fxState = const SagaFxState();
   late final SagaCamera _camera = SagaCamera(progress: state.progress);
   SagaScene? _latestScene;
@@ -201,18 +195,20 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
     }
 
     // Each progress bar that fills flings a couple of stars up to the HUD chip.
-    final fillFrac =
-        ((_time - _stepEnteredAt) / _stepFillDuration).clamp(0.0, 1.0);
+    final fillFrac = ((_time - _stepEnteredAt) / sagaStepFillDuration).clamp(
+      0.0,
+      1.0,
+    );
     final fillProgress = fillFrac * fillFrac * (3 - 2 * fillFrac);
-    const barEnds = [0.2, 0.6, 1.0]; // matches the painter's 3 bars + holds
     var filled = 0;
-    for (final end in barEnds) {
+    for (final end in sagaBarFillEnds) {
       if (fillProgress >= end) filled++;
     }
     if (filled > _barsAwarded) {
       // The step's total reward, split across its 3 bars.
-      final total =
-          SagaFxState(completedLevel: state.currentLevel).rewardStarCount;
+      final total = SagaFxState(
+        completedLevel: state.currentLevel,
+      ).rewardStarCount;
       for (var bar = _barsAwarded; bar < filled; bar++) {
         _spawnBarStars(_barStarShare(bar, total));
       }
@@ -232,7 +228,7 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
     // Stars / lightning / combo start only when the step's third progress bar
     // has filled completely — i.e. once the fill animation reaches its end.
     if (_pendingCompletionLevel != null &&
-        _time - _stepEnteredAt >= _stepFillDuration) {
+        _time - _stepEnteredAt >= sagaStepFillDuration) {
       final completedLevel = _pendingCompletionLevel!;
       _pendingCompletionLevel = null;
       _fxState = SagaFxState(
@@ -244,15 +240,14 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
       SagaAudio.nodeComplete();
       SagaAudio.rewardSpawn();
       if (_fxState.comboNumber != null) {
-        // ponytail: number-pop fires with the lightning; the clip's own attack
-        // covers the ~0.2s until the number scales in.
+        // Both clips start together; the number clip's attack covers its visual delay.
         SagaAudio.comboLightning();
         SagaAudio.comboNumberPop();
       }
       // Special steps: the item's poof drops bonus stars that fly to the chip
       // and land (credited) ~3.5s in, alongside the poof animation.
       if (propAt(completedLevel) != null) {
-        _barStarLandings.add((time: _time + 3.5, stars: _propStarBonus));
+        _barStarLandings.add((time: _time + 3.5, stars: sagaPropStarBonus));
       }
     }
 
@@ -284,7 +279,10 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
       fogDistance: 3600,
     );
     final visualState = state.copyWith(progress: _camera.visualProgress);
-    final fillT = ((_time - _stepEnteredAt) / _stepFillDuration).clamp(0.0, 1.0);
+    final fillT = ((_time - _stepEnteredAt) / sagaStepFillDuration).clamp(
+      0.0,
+      1.0,
+    );
     final scene = buildSagaScene(
       visualState,
       projector,
@@ -468,7 +466,10 @@ class SagaMapGame extends FlameGame with DragCallbacks, MultiTouchTapDetector {
   void _spawnBarStars(int starCount) {
     // Always schedule the credit, even if the node is briefly off-screen, so
     // the total can never lose stars to a missing visual.
-    _barStarLandings.add((time: _time + _barStarFlight, stars: starCount));
+    _barStarLandings.add((
+      time: _time + sagaBarStarFlightDuration,
+      stars: starCount,
+    ));
     final scene = _latestScene;
     if (scene == null) return;
     Offset? from;

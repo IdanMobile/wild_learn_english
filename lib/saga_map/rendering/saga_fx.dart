@@ -1,5 +1,11 @@
 import 'dart:math' as math;
 
+/// Reward values shared by the game state and renderer.
+const sagaStepFillDuration = 1.9;
+const sagaBarFillEnds = [0.2, 0.6, 1.0];
+const sagaBarStarFlightDuration = 0.8;
+const sagaPropStarBonus = 10;
+
 class SagaFxState {
   const SagaFxState({
     this.completedLevel,

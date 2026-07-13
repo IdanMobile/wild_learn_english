@@ -30,7 +30,7 @@ The earlier emulator package-service failure no longer reproduces. Both AVDs and
 flutter analyze
 flutter test
 flutter build apk --debug
-flutter run -d 35171FDH3001PS --profile
+flutter run -d <android-device-id> --profile
 ```
 
 Results:

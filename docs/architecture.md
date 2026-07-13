@@ -30,6 +30,14 @@ Reward counters are real fields in `SagaMapState`, but they do not influence mov
 
 The Flutter HUD measures the energy/star chip centers after responsive layout and passes those screen-space targets to the Flame painter. No device coordinates are hardcoded for the normal runtime path.
 
+## Key Decisions
+
+- Use Flame for lifecycle and input, while keeping the world and projection independent of Flame components.
+- Use a custom 2.5D projection instead of a general 3D engine; the required movement has one controlled camera path and no mesh-heavy scene.
+- Generate nodes by index and render only a bounded window instead of retaining traversal history.
+- Keep Flutter responsible for accessible application chrome and Canvas responsible for the continuously animated world.
+- Add dependencies only when they replace meaningful lifecycle or platform work; the project currently needs only Flame and its audio bridge.
+
 ## Movement Invariant
 
 `SagaMapState.progress` is the only primary movement value. `currentLevel` is derived from progress in the same state transition after every drag update:
@@ -44,6 +52,6 @@ The depth spacing value is owned by `saga_path.dart`; callers use `levelForProgr
 
 The map never stores traversed history. Each frame derives a small `VisibleNodeWindow` around `currentLevel`, generates those indices deterministically, projects them, and paints only the resulting bounded scene.
 
-## Known Deviations
+## Scope Boundaries
 
-The debug overlay reports FPS as unavailable rather than integrating a measurement source. That keeps the UI truthful until a reliable source is wired. Audio is not implemented because no approved audio assets are available. Physical Android profile evidence is still required before claiming device performance.
+This POC deliberately excludes backend services, persistence, authentication, analytics, authored lesson content, and a general 3D asset pipeline. The debug overlay reports FPS as unavailable rather than inventing a runtime measurement; measured profile results live in [performance/results.md](performance/results.md).

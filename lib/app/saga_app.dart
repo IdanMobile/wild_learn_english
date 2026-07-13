@@ -7,8 +7,6 @@ class SagaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: SagaMapScreen(),
-    );
+    return const MaterialApp(home: SagaMapScreen());
   }
 }

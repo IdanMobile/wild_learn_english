@@ -1,33 +1,20 @@
 # Saga Map Flutter POC — Architecture Decisions, Alternatives & Tradeoffs
 
 > **Status:** Decision-rationale companion; non-normative
-> **Normative implementation SSOT:** `AD.md`
-> **Target:** 2-day interview POC
-> **Platform:** Android presentation target
+> **Project reference:** `AD.md`
+> **Target:** Focused Flutter POC
+> **Platform:** Android
 > **Checked:** 2026-07-08
 
 ---
 
-# 0. PURPOSE AND READING RULE
+# 0. PURPOSE
 
-This file explains **why** the architecture in `AD.md` was chosen, **what alternatives were compared**, **what evidence supports the choice**, and **when a locked decision should be reconsidered**.
-
-This file is intentionally separate so coding agents are not encouraged to redesign the system while implementing it.
-
-Rules:
-
-1. `AD.md` is the authoritative implementation and progress source of truth.
-2. This file is context and rationale only.
-3. A coding agent must not reinterpret a LOCKED decision because an alternative appears here.
-4. If implementation evidence invalidates a decision, stop and propose an explicit amendment to `AD.md`.
-5. Do not duplicate coding progress here.
-6. Do not turn rejected alternatives into dependencies without a documented decision change.
-
----
+This document records why the architecture was selected, which alternatives were compared, the supporting evidence, and the conditions that would justify revisiting a decision. `AD.md` contains the corresponding project goals and implementation constraints.
 
 # 1. DECISION CONTEXT
 
-## Assignment essence
+## Project goals
 
 The required experience is a Flutter saga map whose core is:
 
@@ -42,13 +29,12 @@ The remaining demo details are bonus scope.
 
 | Constraint | Consequence |
 |---|---|
-| 2-day POC | High setup-risk technologies are penalized |
+| time-boxed POC | High setup-risk technologies are penalized |
 | Android presentation | Physical-device proof can focus on one platform |
 | Flutter-forward | Flutter ecosystem choices should be preferred where fit |
-| Packages recommended | Reuse proven lifecycle/tooling rather than rebuild everything |
+| Package policy | Reuse proven lifecycle/tooling rather than rebuild everything |
 | Explainability required | Avoid opaque or oversized architecture |
-| AI/multi-agent development | Strong SSOT and ownership rules are mandatory |
-| Only demo video supplied | No production 3D asset pipeline should be assumed |
+| Visual reference without a production asset pipeline | Prefer a focused, project-owned rendering approach |
 | Future work should be easy | Domain/world logic should not be fused to one renderer |
 
 ## North Star
@@ -68,7 +54,7 @@ The remaining demo details are bonus scope.
 | `flame_3d` | Experimental 3D support in Flame | Familiar Flame direction, true 3D exploration | Explicitly experimental | Rejected from critical path |
 | Unity bridge | Embed dedicated game engine | Mature full 3D ecosystem | Bridge/setup complexity; weak Flutter-forward story | Rejected |
 | Filament/native 3D bridge | Native real-time 3D renderer | Strong real 3D capabilities | Integration and platform complexity | Rejected |
-| Custom Flutter GPU renderer | Low-level custom GPU rendering | Maximum control | Very high implementation risk for 2-day POC | Rejected |
+| Custom Flutter GPU renderer | Low-level custom GPU rendering | Maximum control | Very high implementation risk for time-boxed POC | Rejected |
 
 ---
 
@@ -117,7 +103,7 @@ If Flame integration itself becomes a blocker, the domain/path/projection design
 
 ### True 3D packages
 
-Not selected because the 2-day POC does not require arbitrary camera rotation, mesh-heavy scenes, lighting, PBR materials, or a full 3D asset pipeline.
+Not selected because the time-boxed POC does not require arbitrary camera rotation, mesh-heavy scenes, lighting, PBR materials, or a full 3D asset pipeline.
 
 ## Benefits
 
@@ -162,7 +148,7 @@ Represent the path as a deterministic function of integer node index and derive 
 
 ## Why selected
 
-The assignment asks for infinite stones, but “infinite” is a product illusion, not a requirement to allocate infinite objects.
+The project brief asks for infinite stones, but “infinite” is a product illusion, not a requirement to allocate infinite objects.
 
 A deterministic function:
 
@@ -304,7 +290,7 @@ Rejected because the moving projected world becomes mixed with app layout/rebuil
 
 - clear ownership;
 - easy future product UI work;
-- easier interview explanation;
+- easier technical explanation;
 - fewer custom controls.
 
 ## Re-evaluate when
@@ -346,7 +332,7 @@ Insufficient alone. Useful as a live signal, but DevTools/profile evidence is st
 
 ## Benefits
 
-- credible interview proof;
+- credible technical evidence;
 - catches real raster/UI jank;
 - supports evidence-driven optimization.
 
@@ -361,13 +347,13 @@ Never for the final POC claim. Additional benchmark automation may supplement it
 
 ## Decision
 
-Do not use `flutter_scene`, `flame_3d`, Unity bridges, Filament wrappers, or a custom Flutter GPU renderer in the critical path of this two-day POC.
+Do not use `flutter_scene`, `flame_3d`, Unity bridges, Filament wrappers, or a custom Flutter GPU renderer in the critical path of this time-boxed POC.
 
 ## Why selected
 
 ### `flutter_scene`
 
-Current package documentation describes it as an **early preview**, says things may break, and states that it relies on Flutter GPU, which it also describes as preview-state. That is too much critical-path risk for a two-day interview POC.
+Current package documentation describes it as an **early preview**, says things may break, and states that it relies on Flutter GPU, which it also describes as preview-state. That is too much critical-path risk for a focused Flutter POC.
 
 ### `flame_3d`
 
@@ -385,7 +371,7 @@ Maximum control, but far too much low-level implementation risk for the delivery
 
 | Criterion | Custom 2.5D | True 3D critical path |
 |---|---|---|
-| 2-day setup risk | Lower | Higher |
+| Time-boxed setup risk | Lower | Higher |
 | Explainability | High | Medium/low depending on package |
 | Asset pipeline need | Minimal | Often higher |
 | Required visual fit | Strong | Strong |
@@ -456,11 +442,11 @@ Do not add state-management, routing, DI, immutable-codegen, physics, or 3D pack
 
 ## Why selected
 
-This is a one-screen two-day POC. Every dependency adds:
+This is a one-screen time-boxed POC. Every dependency adds:
 
 - API surface;
 - setup/version risk;
-- concepts the candidate must explain;
+- concepts the developer must explain;
 - possible AI-generated boilerplate.
 
 Packages should earn their presence by removing meaningful work or risk.
@@ -511,7 +497,7 @@ Audio reacts to meaningful map events. It does not own gameplay state, progressi
 
 The project already uses Flame for the real-time runtime boundary. Flame documents `flame_audio` as its audio bridge, backed by `audioplayers`, and supports ordinary playback, looping/background music, caching, and `AudioPool` for low-latency repeated/overlapping local SFX.
 
-For this two-day POC, that provides the required capability without designing a custom audio engine.
+For this time-boxed POC, that provides the required capability without designing a custom audio engine.
 
 ## Compared with
 
@@ -601,7 +587,7 @@ The selected default mapping is:
 
 The POC has an infinite logical path but no supplied production asset library. Asset choice therefore has to support both speed and runtime behavior.
 
-Repeated stones are poor candidates for one-off downloaded/generated files because they must react continuously to:
+Repeated stones are a poor fit for one-off raster files because they must react continuously to:
 
 - projection scale;
 - depth/fog;
@@ -624,7 +610,7 @@ Generic HUD symbols are commodity visuals. Reusing a coherent existing vector/ic
 - unlikely to match all visual responsibilities;
 - repeated world geometry becomes coupled to finite art files;
 - hero art and generic icons often have different style needs;
-- searching for a perfect pack can consume a large fraction of the two-day window.
+- searching for a perfect pack can consume a large fraction of the initial delivery window.
 
 **When it could win:**
 
@@ -722,7 +708,7 @@ near
 - unnecessary asset count;
 - transition complexity;
 - style/alignment mismatch risk;
-- more memory and authoring work than the two-day POC justifies.
+- more memory and authoring work than the time-boxed POC justifies.
 
 **Allowed when:**
 
@@ -770,7 +756,7 @@ This behavior belongs in rendering/projection presentation logic, not in gamepla
 - preserves runtime control of depth/parallax;
 - reduces dependency and repository noise;
 - keeps future art replacement straightforward;
-- easy to explain in interview.
+- easy to explain.
 
 ## Costs / risks
 
@@ -812,7 +798,7 @@ The castle/background remain presentation assets and must not own gameplay progr
 
 | Capability | Selected | Alternatives considered | Why selected | Trigger to reconsider |
 |---|---|---|---|---|
-| App framework | Flutter | Native Android, Unity shell | Assignment target and Flutter-forward requirement | Never for this POC |
+| App framework | Flutter | Native Android, Unity shell | Project target and Flutter-forward requirement | Never for this POC |
 | Real-time lifecycle | Flame | Manual ticker/painter loop | Reuses documented game loop and debug/effect capabilities | Flame becomes integration blocker |
 | World model | Custom deterministic index function | Stored list, chunks, server data | Infinite illusion with bounded state | Authored/server-driven world |
 | Projection | Custom 2.5D | `flutter_scene`, `flame_3d`, Flutter GPU | Lowest risk that still matches visual requirement | Arbitrary 3D requirements |
@@ -833,7 +819,7 @@ The castle/background remain presentation assets and must not own gameplay progr
 |---|---|---|---|
 | `flutter_scene` | Early-preview warning + Flutter GPU preview dependency increase delivery risk | Yes | Revisit for production true-3D needs |
 | `flame_3d` | Explicitly experimental | Yes | Revisit as ecosystem matures |
-| Unity bridge | Over-sized integration boundary for Flutter-forward 2-day POC | Yes | Dedicated 3D product/game |
+| Unity bridge | Over-sized integration boundary for Flutter-forward time-boxed POC | Yes | Dedicated 3D product/game |
 | Filament wrapper | Native bridge and scene complexity not justified | Yes | High-end Android-specific 3D |
 | Custom Flutter GPU renderer | Too much low-level work | Yes | Long-horizon renderer R&D |
 | Widget-per-stone | Wrong ownership model for projected moving world | Yes | Tiny/static map |
@@ -881,7 +867,7 @@ The implementation should re-check package versions at start. The architectural 
 | Performance proof | Credible performance | debug, emulator, FPS label, profile/DevTools | Physical profile + DevTools | Official Flutter guidance | Stronger than anecdotal smoothness |
 | Pooling | Bounded runtime | mandatory pool, derived window, unbounded | Derived bounded window first | Complexity proportional to evidence | Pool only if profiler proves need |
 | Sound feedback | Small responsive interaction cues | none, direct `audioplayers`, other packages, custom engine | `flame_audio` | Official Flame bridge/docs; supports caching, loops and pooled repeated SFX | Small coherent surface; no custom subsystem |
-| Asset strategy | Only demo video supplied; infinite path; two-day limit | All-downloaded, all-generated, all-procedural, baked background, 3D pipeline | Hybrid responsibility-based asset strategy | ADR-010 decision analysis | Procedural repeated geometry; layered signature art; curated generic support assets |
+| Asset strategy | Visual reference, infinite path, time-boxed delivery | Asset pack, generated art, procedural art, baked background, 3D pipeline | Hybrid responsibility-based asset strategy | ADR-010 decision analysis | Procedural repeated geometry; layered signature art; curated generic support assets |
 
 ---
 
@@ -912,7 +898,7 @@ The implementation should re-check package versions at start. The architectural 
 | Flutter SDK | Installed stable version and Android toolchain | Project initialization |
 | `vector_math` | Whether actually needed | Before adding dependency |
 | `flutter_scene` / `flame_3d` status | Only if reopening true-3D decision | Explicit ADR amendment proposal |
-| Performance claims | Actual physical device/profile evidence | Before README/interview claim |
+| Performance claims | Actual physical device/profile evidence | Before any published performance claim |
 | Visible count | Real visual/performance tradeoff | Integration tuning |
 | Pooling need | Allocation/profile evidence | Only after profile run |
 | `flame_audio` version | Current compatible stable version and Android playback on presentation device | Before adding/locking audio |
@@ -921,11 +907,11 @@ The implementation should re-check package versions at start. The architectural 
 
 ---
 
-# 9. INTERVIEW-SAFE DECISION SUMMARY
+# 9. DECISION SUMMARY
 
 A concise explanation:
 
-> “I separated the logical saga world from its renderer. The world is deterministic and index-based, so it can progress indefinitely while only a bounded visible range is processed. I used Flame for the real-time lifecycle instead of rebuilding a game loop, but kept the 2.5D projection custom because the reference needs depth, not a general 3D engine. I compared current true-3D Flutter options, but kept them out of the critical path because the available packages still carry preview or experimental risk for a two-day POC. Flutter widgets own ordinary HUD UI, and performance is verified on the physical Android demo device in profile mode rather than claimed from debug mode.”
+> “I separated the logical saga world from its renderer. The world is deterministic and index-based, so it can progress indefinitely while only a bounded visible range is processed. I used Flame for the real-time lifecycle instead of rebuilding a game loop, but kept the 2.5D projection custom because the reference needs depth, not a general 3D engine. I compared current true-3D Flutter options, but kept them out of the critical path because the available packages still carry preview or experimental risk for a time-boxed POC. Flutter widgets own ordinary HUD UI, and performance is verified on the physical Android demo device in profile mode rather than claimed from debug mode.”
 
 For assets, repeated world geometry stays procedural, signature horizon art remains layered and replaceable, and generic support icons come from a coherent curated source with explicit provenance.
 

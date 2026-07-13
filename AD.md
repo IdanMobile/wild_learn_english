@@ -1,42 +1,23 @@
 # Saga Map Flutter POC — Architecture & Delivery Directive
 
-> **Status:** Authoritative implementation source of truth (SSOT)
-> **Target:** 2-day interview POC
-> **Platform:** Android presentation target
+> **Status:** Project architecture reference
+> **Target:** Focused Flutter POC
+> **Platform:** Android
 > **Primary framework:** Flutter
 > **Approved game/render lifecycle package:** Flame
 > **Core rendering strategy:** Custom 2.5D perspective projection over a deterministic infinite logical world
 > **Date locked:** 2026-07-08
 
 > **Decision rationale companion:** `ARCHITECTURE_DECISIONS.md`
-> This file is normative execution guidance. The companion file records why decisions were made, alternatives compared, evidence, tradeoffs, and re-evaluation triggers. Coding agents must not reinterpret locked decisions from the companion file unless `AD.md` is deliberately amended.
-
 ---
 
-# 0. EXECUTE THIS FILE — DO NOT REINTERPRET THE PROJECT
+# 0. PURPOSE
 
-This document is the single authoritative implementation source of truth for the Saga Map interview POC.
-
-All coding agents, reviewers, planners, and subagents must:
-
-1. Read this file in full before changing code.
-2. Follow the architecture and boundaries defined here.
-3. Treat decisions marked **LOCKED** as immutable unless a documented blocker proves the decision invalid.
-4. Never create a competing architecture document or hidden progress tracker.
-5. Record implementation progress only in the progress section of this file.
-6. Update this file when a decision materially changes.
-7. Prefer deletion over speculative abstraction.
-8. Stop feature work when a mandatory gate fails.
-9. Never claim performance, visual fidelity, or correctness without evidence.
-10. Keep the implementation small enough that one senior Flutter developer can explain nearly all of it in an interview.
-
-If code and this document disagree, this document wins until it is deliberately amended.
-
----
+This document records the project goals, architecture, implementation constraints, validation approach, and delivery decisions. The companion `ARCHITECTURE_DECISIONS.md` explains the alternatives and tradeoffs behind the selected design.
 
 # 1. NORTH STAR
 
-## 1.1 Interview assignment intent
+## 1.1 Project intent
 
 Implement a Flutter saga-map experience whose essential behavior is:
 
@@ -49,7 +30,7 @@ Other demo details are bonuses.
 
 ## 1.2 North Star outcome
 
-Deliver the strongest two-day Flutter interview POC by demonstrating:
+Deliver the strongest focused Flutter POC by demonstrating:
 
 1. a visually convincing saga-map experience;
 2. intentional architecture decisions;
@@ -61,7 +42,7 @@ Deliver the strongest two-day Flutter interview POC by demonstrating:
 
 ## 1.3 Success definition
 
-The POC succeeds when an interviewer can quickly see and verify:
+The POC succeeds when a reviewer can quickly see and verify:
 
 - the map feels three-dimensional;
 - the user can continuously drag/scroll through the journey;
@@ -81,7 +62,7 @@ The POC fails if any of these happen:
 - the map is visually flat or obviously just a vertical list;
 - infinite progression creates unbounded widgets/components/objects;
 - multiple progress/camera/scroll values drift independently;
-- AI agents create duplicated architectures or boilerplate;
+- duplicated architectures or boilerplate obscure the core design;
 - the app cannot be explained clearly;
 - bonus features are polished while the core map remains weak;
 - performance is claimed without physical-device profile evidence.
@@ -376,7 +357,7 @@ Do not:
 - generate or download a unique image for every stone;
 - bake the complete saga map into one background image;
 - introduce a 3D asset pipeline only to place the distant castle;
-- let AI agents add unrelated asset packs without review;
+- add unrelated asset packs without review;
 - mix many icon styles;
 - make the core infinite path depend on a finite asset list;
 - add an asset-management framework for this POC.
@@ -428,7 +409,7 @@ Do not add without amending this SSOT with evidence:
 - generic service locators
 - DI frameworks
 
-Reason: no demonstrated need relative to the two-day scope.
+Reason: no demonstrated need relative to the focused scope.
 
 ## 4.5 Version rule
 
@@ -723,7 +704,7 @@ relativeDepth = node.depth - progress
 
 ## 8.3 Perspective-like scale
 
-Initial candidate:
+Initial value:
 
 ```text
 scale = focalLength / (focalLength + relativeDepth)
@@ -1254,11 +1235,11 @@ Current POC world/domain contracts should remain as reusable as reasonably possi
 
 ---
 
-# 21. TWO-DAY EXECUTION PLAN
+# 21. IMPLEMENTATION PLAN
 
 Time blocks are sequencing guidance, not promises.
 
-## DAY 1 — Core architecture + experience
+## PHASE 1 — Core architecture + experience
 
 ### Wave 0 — Bootstrap and lock
 
@@ -1372,7 +1353,7 @@ No Day 2 bonus work until this gate is green.
 
 ---
 
-## DAY 2 — Architecture proof + performance + polish
+## PHASE 2 — Architecture proof + performance + polish
 
 ### Wave 5 — Debug proof
 
@@ -1388,7 +1369,7 @@ Tasks:
 
 **Gate D2-G1**
 
-Pass when an interviewer can understand infinite/bounded/projection behavior without opening source code.
+Pass when a reviewer can understand infinite/bounded/projection behavior without opening source code.
 
 ### Wave 6 — Extensibility proof
 
@@ -1473,157 +1454,9 @@ Must pass:
 
 ---
 
-# 22. MULTI-AGENT EXECUTION MODEL
-
-Parallel agents are allowed, but ownership is strict.
-
-## Role A — Architecture Guardian
-
-**Code ownership:** none by default
-
-Responsibilities:
-
-- enforce this AD;
-- review duplicate state;
-- review dependency additions;
-- reject speculative abstractions;
-- inspect module-boundary violations;
-- keep progress log truthful.
-
-Must not create an alternate architecture.
-
-## Role B — World / Infinity
-
-Owns:
-
-```text
-saga_map/domain/
-saga_map/world/
-```
-
-Responsibilities:
-
-- node model;
-- state classification;
-- deterministic path;
-- visible-window derivation;
-- tests.
-
-Must not edit renderer except via agreed contract change.
-
-## Role C — Projection / Rendering
-
-Owns:
-
-```text
-saga_map/projection/
-saga_map/rendering/
-```
-
-Responsibilities:
-
-- projection math;
-- scene representation;
-- draw order;
-- stones;
-- atmosphere;
-- castle visual.
-
-Must not invent alternate movement state.
-
-## Role D — Input / Physics
-
-Owns:
-
-```text
-saga_map/navigation/
-```
-
-Responsibilities:
-
-- drag mapping;
-- velocity;
-- inertia;
-- friction;
-- tests.
-
-Output affects only canonical progress.
-
-## Role E — UI / Visual Polish
-
-Owns visual polish, Flutter HUD, and approved layered environment/support assets. Must follow ADR-010 and may not introduce unreviewed asset packs.
-
-
-Owns:
-
-```text
-ui/
-saga_map_screen.dart
-approved assets
-```
-
-Responsibilities:
-
-- HUD;
-- overlays;
-- debug controls shell;
-- final visual polish outside core renderer.
-
-Must not reimplement map state in Flutter widget state.
-
-## Role F — Verification / Performance
-
-Owns:
-
-```text
-test/
-docs/performance/
-verification scripts if any
-```
-
-Responsibilities:
-
-- analyzer/test verification;
-- invariant tests;
-- profile procedure;
-- evidence recording;
-- redundancy findings.
-
-No unrelated feature development.
-
----
-
-# 23. AGENT DEPENDENCY ORDER
-
-Do not launch all agents blindly.
-
-```text
-AD lock
-  ↓
-Domain contracts + state
-  ↓
-World model / visible window
-  ├──────────────┐
-  ▼              ▼
-Projection      Input physics
-  └──────┬───────┘
-         ▼
-      Renderer
-         ↓
-   Debug proof + UI
-         ↓
-Performance verification
-         ↓
-Polish / submission closure
-```
-
-Parallelism is allowed only when interfaces are already stable enough to avoid duplicate invention.
-
----
-
 # 24. CHANGE CONTROL
 
-## 24.1 Any agent proposing a new dependency must provide
+## 24.1 Any new dependency proposal must provide
 
 - capability needed;
 - why Flutter/Flame/current code is insufficient;
@@ -1635,14 +1468,14 @@ Parallelism is allowed only when interfaces are already stable enough to avoid d
 
 No evidence → no dependency.
 
-## 24.2 Any agent proposing a new abstraction must provide
+## 24.2 Any new abstraction proposal must provide
 
 - two real current variations, or
 - one demonstrated boundary whose isolation materially reduces risk.
 
 Otherwise reject.
 
-## 24.3 Any agent proposing true 3D must stop
+## 24.3 Any true-3D proposal must first establish
 
 The proposal requires explicit SSOT amendment before implementation.
 
@@ -1684,7 +1517,7 @@ Do not hide a stop condition with more code.
 
 ---
 
-# 27. INTERVIEW DEMO PATH
+# 27. DEMO PATH
 
 Rehearse this order:
 
@@ -1729,7 +1562,7 @@ Rehearse this order:
 
 README must include:
 
-- one-paragraph assignment summary;
+- one-paragraph project summary;
 - how to run Android app;
 - chosen architecture in one diagram;
 - dependency rationale;
@@ -1741,76 +1574,6 @@ README must include:
 - link to `ARCHITECTURE_DECISIONS.md`.
 
 Do not write marketing claims unsupported by the implementation.
-
----
-
-# 29. PROGRESS LEDGER — SINGLE CODING PROGRESS SOURCE OF TRUTH
-
-> This section is the only authoritative progress tracker.
-> Do not create `TODO.md`, `PLAN.md`, `STATUS.md`, or competing task ledgers.
-> Normal issue trackers/commits may exist, but this remains the project-level implementation truth for the POC.
-
-## Status values
-
-- `NOT_STARTED`
-- `IN_PROGRESS`
-- `BLOCKED`
-- `IMPLEMENTED`
-- `VERIFIED`
-- `REJECTED`
-
-## Current progress
-
-| Work Item | Owner | Status | Evidence | Blocker / Next |
-|---|---|---|---|---|
-| AD locked in repository root | Architecture Guardian | VERIFIED | Recovery-Governance Exception 5: `AD.md` is present at repository root and was read in full during the 2026-07-09 direct execution takeover before code changes. | — |
-| Android bootstrap verified | — | VERIFIED | On 2026-07-10 the current APK built, installed, and launched on both the Android 15 Medium Phone AVD and Android 17 Pixel 10 Pro AVD. Debug and profile APK builds passed. | — |
-| Flutter/Flame versions recorded | — | VERIFIED | Recovery-Governance Exception 5: `flutter --version` → Flutter 3.44.5 stable, Dart 3.12.2, DevTools 2.57.0. `pubspec.yaml` declares `flame: ^1.37.0` and `flame_audio: ^2.12.1`; `pubspec.lock` contains resolved `flame`/`flame_audio` packages. | — |
-| Domain models | World agent | VERIFIED | `lib/saga_map/domain/saga_map_state.dart`, `saga_node.dart`, and `saga_node_state.dart` present. `flutter test test/saga_map` passed 33/33 including default path-preset and `copyWith` state tests. | — |
-| Deterministic SagaPath | World agent | VERIFIED | `lib/saga_map/world/saga_path.dart` owns deterministic `nodeAt`, `depth`, `levelForProgress`, and `SagaPathPreset`. `flutter test test/saga_map` passed 33/33 including deterministic, large-index, negative-index, preset-variation, and level-threshold cases. | — |
-| Bounded VisibleNodeWindow | World agent | VERIFIED | Present & unmodified: `lib/saga_map/world/visible_node_window.dart` (29 lines). `flutter test test/saga_map/world/visible_node_window_test.dart` → bounded-count (small travel + ~1,000,000-equivalent travel), forward-shift, and ascending-no-duplicate index invariants all passed (part of 13/13). | — |
-| World invariant tests | World agent | VERIFIED | `flutter test test/saga_map` passed 33/33 including `saga_path_test.dart`, `saga_map_state_test.dart`, and `visible_node_window_test.dart`. | — |
-| PerspectiveProjector | Projection agent | VERIFIED | Present & unmodified: `lib/saga_map/projection/perspective_projector.dart` (100 lines). `flutter test test/saga_map/projection/perspective_projector_test.dart` → farther-depth-smaller-scale, finite-output, camera-cull, and perspective-singularity-cull cases all passed (part of 13/13). | — |
-| Projector tests | Projection agent | VERIFIED | `flutter test test/saga_map/projection/perspective_projector_test.dart` → all cases passed within "All tests passed!" 13/13 run (Flutter 3.44.5 stable). File present & unmodified: `perspective_projector_test.dart` (65 lines). | — |
-| Basic renderer | Projection agent | VERIFIED | Recovery-Governance Exception 5: Present files `lib/saga_map/rendering/saga_scene.dart`, `saga_scene_builder.dart`, and `saga_map_painter.dart`; `flutter test test/saga_map` passed 33/33 including `saga_scene_builder_test.dart` scene-window, culling, ordering, and purity cases. Painter includes background, fogged procedural stones, shadows, current-node accent, and castle rendering. | — |
-| Drag physics | Input agent | VERIFIED | Recovery-Governance Exception 5: Present file `lib/saga_map/navigation/saga_scroll_physics.dart`; `flutter test test/saga_map` passed 33/33 including `progressDeltaFromDrag` positive/negative/zero direction and sensitivity cases. | — |
-| Inertia/friction | Input agent | VERIFIED | Recovery-Governance Exception 5: Present file `lib/saga_map/navigation/saga_scroll_physics.dart`; `flutter test test/saga_map` passed 33/33 including inertia progress continuation, exponential friction decay, settle threshold, and dt-aware split-step equivalence cases. | — |
-| Physics tests | Input agent | VERIFIED | Recovery-Governance Exception 5: Present file `test/saga_map/navigation/saga_scroll_physics_test.dart`; `flutter test test/saga_map` passed 33/33 on 2026-07-09. | — |
-| Infinite traversal integrated | Integration | VERIFIED | Recovery-Governance Exception 1 / Recovery-Governance Exception 2: `SagaMapGame.applyDragDelta` updates clamped absolute `progress` and derived `currentLevel` in one `copyWith`; `test/saga_map/saga_map_game_test.dart` proves currentLevel equals `levelForProgress(progress)` after each drag, multi-level jumps work, reverse drag clamps to zero, and long traversal still builds a non-empty scene. `flutter test test/saga_map` passed 33/33. | — |
-| Fog/depth tuning | Projection agent | VERIFIED | `SagaMapPainter` blends node color toward fog by projected `fogFactor`, paints procedural shadows, and accents current nodes. `flutter analyze` passed with no issues; `flutter test test/saga_map` passed 33/33. | — |
-| Castle horizon | Projection/UI | VERIFIED | `SagaMapGame.onLoad` loads `assets/environment/castle.png`; `SagaMapPainter` renders it near the horizon with haze tint. `flutter build apk --debug` passed, confirming asset declaration/build wiring. | — |
-| Layered environment assets | UI/Visual agent | VERIFIED | `assets/environment/` contains sky, mountains, haze, foreground mist, castle, and castle detail overlay as separate layers; `pubspec.yaml` declares them. `flutter build apk --debug` passed. | — |
-| Asset provenance record | UI/Visual agent | VERIFIED | `docs/assets.md` records all committed non-procedural assets and notes generated-first-party provenance. | — |
-| Node states visuals | Projection/UI | VERIFIED | `SagaMapPainter` uses a `switch` over `SagaNodeState` for completed/current/upcoming colors and current-node accent. `flutter analyze` passed. | — |
-| Day 1 critical gate | Architecture Guardian | VERIFIED | Android emulator launch, continuous movement, depth/castle composition, bounded window, one progress SSOT, analyzer, 70 tests, and APK builds are green. Pixel AVD screenshots verified the current rendered experience. | — |
-| Debug overlay | UI/Verification | VERIFIED | `lib/saga_map/debug/saga_debug_overlay.dart` shows real progress, current index, bounded visible count, path preset, renderer label, and explicitly labels FPS unavailable rather than faking it. Wired through `SagaMapScreen`. `flutter analyze` passed. | — |
-| Projection debug mode | Projection/Verification | VERIFIED | Debug overlay toggles projection debug; `SagaMapPainter` draws the horizon line from the existing scene/render pass without recomputing projection. `flutter analyze` passed. | — |
-| Second path preset | World agent | VERIFIED | Recovery-Governance Exception 2 / Recovery-Governance Exception 3: `SagaPathPreset { gentle, dramatic }` added in `saga_path.dart`, `SagaMapState` tracks the active preset, `SagaMapGame.togglePathPreset` switches it, and `saga_path_test.dart` proves geometry changes without changing node contract. Renderer/projection/navigation APIs unchanged. | — |
-| Physical Android profile run | Verification | VERIFIED | Pixel 7 Pro, Android 16 API 36, arm64: current profile APK completed a controlled 30-second traversal and reward/combo scenario at a DevTools average of 120 FPS. Three isolated slow frames appeared, with no persistent jank, crash, Flutter exception, overflow, asset failure, or skipped-frame report. | — |
-| Performance results doc | Verification | VERIFIED | `docs/performance/results.md` records the physical Pixel 7 Pro profile trace, both emulator compatibility runs, sustained traversal, exact measured findings, rejected invalid emulator timing sources, visual review, and test/build evidence. | — |
-| HUD polish | UI agent | VERIFIED | `lib/ui/saga_hud.dart` uses safe-area responsive counters, measured reward targets, shared idle motion, contextual panels, pressed feedback, side tools, lesson card, and bottom navigation. Widget tests tap every visible control. | — |
-| Reward collection flow | Integration/UI | VERIFIED | Stars and energy follow curved paths to measured chip centers; `SagaMapState` counters update once at arrival. Interrupted flights defer into the next visible arrival. Unit/widget tests cover timing, exact-once credit, interruption, and both measured targets. | — |
-| Major lightning/combo VFX | Projection/UI | VERIFIED | Supplied 8-frame lightning, dynamic number, soft glow, sparkles, residual streak, hero star, and bounded cleanup are integrated. Pixel AVD profile screenshots verified the entry and number-emphasis stages; lifecycle tests verify one bounded active sequence and cleanup. | — |
-| Interactive HUD and map | UI/Integration | VERIFIED | Header counters/profile, five side tools, six bottom navigation controls, lesson card, level/preset/debug controls, current nodes, and deterministic chest/orb/crystal steps all respond with visual feedback or contextual panels. | — |
-| Widget/integration coverage | Verification | VERIFIED | `test/ui/saga_hud_test.dart` and `test/ui/saga_map_screen_test.dart` cover app launch, measured targets, every HUD control, debug toggle, progression, current-node hit handling, panels, and delayed counter update. | — |
-| Decision rationale companion synced | Architecture Guardian | VERIFIED | `ARCHITECTURE_DECISIONS.md` exists at repository root and remains the rationale companion linked by `README.md`; no new ADR conflict was introduced by the implementation. | — |
-| README | Integration | VERIFIED | `README.md` rewritten with summary, run commands, architecture diagram, dependency rationale, infinite-world explanation, performance status, tests, limitations, and future work. | — |
-| Final redundancy audit | Architecture Guardian | VERIFIED | `rg` for duplicate movement fields found no `scrollOffset`, `cameraOffset`, `worldOffset`, or `mapOffset` in real code; `double progress` appears only as the canonical `SagaMapState.progress` field and function parameters/results. | — |
-| Final analyzer/tests | Verification | VERIFIED | `flutter analyze` → no issues. `flutter test` → 70/70 passing. Debug/profile APK builds pass. | — |
-| Final Android demo verification | Verification | VERIFIED | Current profile APK built, installed, and completed the full controlled scenario on a physical Pixel 7 Pro. Post-run visual review confirmed fixed HUD placement, continuous castle path, preserved node states, bounded visible content, and responsive progression. | — |
-
-## Progress update rule
-
-When changing a row to `VERIFIED`, add concrete evidence, for example:
-
-- test command and result;
-- physical device/model and run mode;
-- screenshot path;
-- commit hash;
-- profiler result path;
-- exact gate checklist.
-
-`IMPLEMENTED` is not the same as `VERIFIED`.
 
 ---
 
@@ -1873,17 +1636,9 @@ When changing a row to `VERIFIED`, add concrete evidence, for example:
 
 ---
 
-# 31. FIRST EXECUTION COMMAND FOR A CODING AGENT
-
-Use this instruction after placing this file at repository root:
-
-> Read `AD.md` in full and treat it as the single authoritative implementation and progress source of truth. Read `ARCHITECTURE_DECISIONS.md` only for rationale and tradeoff context; it is non-normative and must not be used to reinterpret LOCKED decisions. Inspect the repository before changing anything. Begin at the earliest incomplete execution wave. Do not create a competing plan, TODO file, status file, architecture, or progress tracker. Respect strict module ownership, one progression SSOT, anti-redundancy rules, gates, stop conditions, and evidence requirements. Update the `AD.md` Progress Ledger as work is implemented and verified. Continue through safe unblocked tasks; stop only for a genuine blocker, a failed critical gate, or a decision that requires amending a LOCKED item.
-
----
-
 # 32. FINAL PRINCIPLE
 
-The POC is not trying to prove that the largest architecture can be built in two days.
+The POC is not trying to prove that the largest architecture can be built within the initial delivery window.
 
 It is trying to prove that the right architecture was chosen deliberately:
 

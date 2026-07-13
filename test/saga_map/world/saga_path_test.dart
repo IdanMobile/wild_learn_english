@@ -55,8 +55,7 @@ void main() {
 
   group('levelForProgress', () {
     test('maps progress thresholds to their current level', () {
-      // Recovery-Governance Exception 2: additive regression coverage for
-      // the canonical progress -> currentLevel helper.
+      // Covers the canonical progress -> currentLevel boundary behavior.
       final firstThreshold = depth(1).toDouble();
       final fourthThreshold = depth(4).toDouble();
 

@@ -1,6 +1,6 @@
 # Saga Map Flutter POC
 
-Flutter/Flame proof of concept for a depth-rich saga map: drag through an apparently infinite path of projected stones, keep runtime work bounded, show a distant castle anchor, and expose debug proof for progress, visible count, projection, and path presets.
+Flutter/Flame proof of concept for a depth-rich saga map. It combines an apparently infinite procedural path with bounded runtime work, a perspective projection, responsive HUD, rewards, and audio feedback.
 
 ## Run
 
@@ -34,7 +34,7 @@ User drag
 
 `SagaMapState.progress` is the single movement source of truth. `currentLevel` is derived from it through `levelForProgress`, so long traversal advances the bounded visible window instead of accumulating rendered nodes or going blank.
 
-Flame is used for the game/render lifecycle and input delivery. The infinite-world math, projection, scene assembly, and rendering remain small app-owned modules because they are specific to this POC. See [ARCHITECTURE_DECISIONS.md](ARCHITECTURE_DECISIONS.md) for rationale.
+Flame owns the game/render lifecycle and input delivery. The infinite-world math, projection, scene assembly, and rendering remain small app-owned modules because they are specific to this POC. See [docs/architecture.md](docs/architecture.md) for the module boundaries and design rationale.
 
 ## Features
 
@@ -69,10 +69,10 @@ Details are recorded in [docs/performance/results.md](docs/performance/results.m
 
 ## Limitations
 
-Audio polish was skipped because no approved audio assets are present and it is optional to the core map proof. Three isolated slow frames in the physical stress scenario remain available for later micro-optimization.
+This is an intentionally focused proof of concept: lesson content, persistence, authentication, networking, and production analytics are outside its scope. Three isolated slow frames in the physical stress scenario remain available for later investigation.
 
 ## Future Work
 
 - tune visual constants from broader physical-device screenshots
 - inspect the three isolated physical-profile slow frames if stricter 120 Hz consistency is required
-- add optional audio after approved sound assets are available
+- connect the map to authored lesson content and persistence

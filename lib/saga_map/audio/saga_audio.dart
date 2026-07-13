@@ -16,7 +16,6 @@ class SagaAudio {
   // Per-clip playback volume. See the mix table in the sounds spec.
   static const _volumes = <String, double>{
     'ui_tap.mp3': 0.45,
-    'ui_disabled.mp3': 0.35,
     'node_select.mp3': 0.55,
     'node_arrive.mp3': 0.50,
     'node_complete.mp3': 0.70,
@@ -62,7 +61,6 @@ class SagaAudio {
   }
 
   static void uiTap() => _play('ui_tap.mp3');
-  static void uiDisabled() => _play('ui_disabled.mp3');
   static void nodeSelect() => _play('node_select.mp3');
   static void nodeArrive() => _play('node_arrive.mp3');
   static void nodeComplete() => _play('node_complete.mp3');

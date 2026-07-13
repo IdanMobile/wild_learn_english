@@ -53,8 +53,6 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Recovery-Governance Exception 1 (additive only): the blank Scaffold stub
-    // is composed with, not replaced — GameWidget remains the body layer.
     return Scaffold(
       body: Stack(
         key: _mapStackKey,
@@ -107,9 +105,7 @@ class _SagaMapScreenState extends State<SagaMapScreen> {
               final stepCount = value.clamp(1, 1000000);
               setState(() => _stepCount = stepCount);
               _stepCountController.text = '$stepCount';
-              _game.setStepLimit(
-                stepCount: _infiniteSteps ? null : stepCount,
-              );
+              _game.setStepLimit(stepCount: _infiniteSteps ? null : stepCount);
             },
             onCameraHeightChanged: (value) {
               setState(() => _cameraHeight = value);
